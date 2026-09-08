@@ -18,17 +18,19 @@ import java.util.Map;
 
 public final class Scanner {
     private enum Kind {
-        AND, OR, BIT_AND, BIT_OR, BIT_XOR, BIT_NOT,
-        PLUS, MINUS, TIMES, DIVIDE, LESS_THAN, GREATER_THAN,
-        EQUAL, NOT_EQUAL, NOT, ASSIGN,
-        LPAREN, RPAREN, LBRACKET, RBRACKET, LBRACE, RBRACE,
-        COMMA, DOT, SEMICOLON,
-        CLASS, PUBLIC, STATIC, VOID, MAIN, STRING, EXTENDS,
-        RETURN, INT, BOOLEAN, IF, ELSE, WHILE, LENGTH,
-        TRUE, FALSE, THIS, NEW, SYSTEM_OUT_PRINTLN,
-        XINU_PRINT, XINU_PRINTLN, XINU_PRINTINT, XINU_READINT,
-        IDENTIFIER, INTEGER_LITERAL, STRING_LITERAL, EOF
+    	AND, OR, BWAND, BWOR, XOR, COMP,
+    	PLUS, MINUS, STAR, FORWARDSLASH, LESSTHAN, GREATERTHAN,
+    	EQUAL, NOTEQUAL, BANG, ASSIGN,
+    	LPAREN, RPAREN, LSQUARE, RSQUARE, LBRACE, RBRACE,
+    	COMMA, PERIOD, SEMICOLON,
+    	CLASS, PUBLIC, STATIC, VOID, MAIN, STRING, EXTENDS,
+    	RETURN, INT, BOOLEAN, IF, ELSE, WHILE, LENGTH,
+    	TRUE, FALSE, THIS, NEW, SYSTEM_OUT_PRINTLN,
+    	PRINT, PRINTLN, PRINTINT, READINT,
+    	ID, INTEGER_LITERAL, OCTAL_LITERAL, HEXADECIMAL_LITERAL,
+    	STRING_LITERAL, EOF
     }
+
 
     private static final Map<String, Kind> KEYWORDS = new HashMap<String, Kind>();
     private static final Map<String, Kind> SYMBOLS = new HashMap<String, Kind>();
@@ -37,10 +39,9 @@ public final class Scanner {
         "Xinu.readint", "Xinu.print"
     };
     private static final Kind[] DOTTED_KINDS = {
-        Kind.SYSTEM_OUT_PRINTLN, Kind.XINU_PRINTLN, Kind.XINU_PRINTINT,
-        Kind.XINU_READINT, Kind.XINU_PRINT
+    Kind.SYSTEM_OUT_PRINTLN, Kind.PRINTLN, Kind.PRINTINT,
+    Kind.READINT, Kind.PRINT
     };
-
     static {
         String[] words = {
             "class", "public", "static", "void", "main", "String", "extends",
@@ -60,14 +61,14 @@ public final class Scanner {
             "&&", "||", "&", "|", "^", "~", "+", "-", "*", "/", "<", ">",
             "==", "!=", "!", "=", "(", ")", "[", "]", "{", "}", ",", ".", ";"
         };
-        Kind[] symbolKinds = {
-            Kind.AND, Kind.OR, Kind.BIT_AND, Kind.BIT_OR, Kind.BIT_XOR,
-            Kind.BIT_NOT, Kind.PLUS, Kind.MINUS, Kind.TIMES, Kind.DIVIDE,
-            Kind.LESS_THAN, Kind.GREATER_THAN, Kind.EQUAL, Kind.NOT_EQUAL,
-            Kind.NOT, Kind.ASSIGN, Kind.LPAREN, Kind.RPAREN, Kind.LBRACKET,
-            Kind.RBRACKET, Kind.LBRACE, Kind.RBRACE, Kind.COMMA, Kind.DOT,
-            Kind.SEMICOLON
-        };
+	Kind[] symbolKinds = {
+    		Kind.AND, Kind.OR, Kind.BWAND, Kind.BWOR, Kind.XOR,
+    		Kind.COMP, Kind.PLUS, Kind.MINUS, Kind.STAR, Kind.FORWARDSLASH,
+    		Kind.LESSTHAN, Kind.GREATERTHAN, Kind.EQUAL, Kind.NOTEQUAL,
+    		Kind.BANG, Kind.ASSIGN, Kind.LPAREN, Kind.RPAREN, Kind.LSQUARE,
+    		Kind.RSQUARE, Kind.LBRACE, Kind.RBRACE, Kind.COMMA, Kind.PERIOD,
+    		Kind.SEMICOLON
+	};
         for (int i = 0; i < symbols.length; i++) {
             SYMBOLS.put(symbols[i], symbolKinds[i]);
         }
@@ -98,7 +99,6 @@ public final class Scanner {
         this.source = source;
     }
 
-    // Use -1 for EOF so an actual NUL in the source is still an illegal token.
     private int peek(int offset) {
         int index = position + offset;
         return index < source.length() ? source.charAt(index) : -1;
@@ -161,7 +161,7 @@ public final class Scanner {
         }
         String word = source.substring(start, position);
         Kind kind = KEYWORDS.get(word);
-        return new Token(kind == null ? Kind.IDENTIFIER : kind, word);
+	return new Token(kind == null ? Kind.ID : kind, word);
     }
 
     private static boolean isDigitInBase(int c, int base) {
@@ -171,31 +171,49 @@ public final class Scanner {
         return base == 16 && ((c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'));
     }
 
-    private Token scanNumber() throws LexicalException {
-        int start = position;
-        int base = 10;
-        String error = "Invalid character in number.";
-        if (peek(0) == '0') {
-            base = 8;
-            error = "Invalid character in octal number.";
-            if (peek(1) == 'x') {
-                base = 16;
-                error = "Invalid character in hex number.";
-                position += 2;
-            }
-        }
-        int digitsStart = position;
-        while (isDigitInBase(peek(0), base)) {
-            position++;
-        }
+private Token scanNumber() throws LexicalException {
+    int start = position;
+    int base = 10;
+    Kind kind = Kind.INTEGER_LITERAL;
+    String error = "Invalid character in number.";
 
-        if (position == digitsStart || isIdentifierPart(peek(0))) {
-            throw new LexicalException(error);
-        }
-
-        return new Token(Kind.INTEGER_LITERAL, source.substring(start, position));
+    if (peek(0) == '0' && isDigit(peek(1))) {
+        base = 8;
+        kind = Kind.OCTAL_LITERAL;
+        error = "Invalid character in octal number.";
+    } else if (peek(0) == '0'
+            && (peek(1) == 'x' || peek(1) == 'X')) {
+        base = 16;
+        kind = Kind.HEXADECIMAL_LITERAL;
+        error = "Invalid character in hex number.";
+        position += 2;
     }
 
+    int digitsStart = position;
+
+    while (isDigitInBase(peek(0), base)) {
+        position++;
+    }
+
+    if (position != digitsStart && !isIdentifierPart(peek(0))) {
+        return new Token(kind, source.substring(start, position));
+    }
+
+    if (position == digitsStart
+            && kind == Kind.HEXADECIMAL_LITERAL
+            && !isIdentifierPart(peek(0))) {
+        return new Token(kind, source.substring(start, position));
+    }
+
+    if (isIdentifierPart(peek(0))) {
+        while (isIdentifierPart(peek(0))) {
+            position++;
+        }
+        throw new LexicalException(error);
+    }
+
+    return new Token(kind, source.substring(start, position));
+}
     private Token scanString() throws LexicalException {
         position++;
         int start = position;
@@ -236,21 +254,24 @@ public final class Scanner {
         String symbol = Character.toString((char) c);
         Kind kind = SYMBOLS.get(symbol);
         if (kind == null) {
+	    position++;
             throw new LexicalException("Illegal token.");
         }
         position++;
         return new Token(kind, symbol);
     }
 
-    // Adjust this method and the Kind names after obtaining reference output.
-    private static String format(Token token) {
-        if (token.kind == Kind.IDENTIFIER || token.kind == Kind.INTEGER_LITERAL
-                || token.kind == Kind.STRING_LITERAL) {
-            return token.kind.name() + "(" + token.text + ")";
-        }
-        return token.kind.name();
-    }
+private static String format(Token token) {
+    	if (token.kind == Kind.ID
+            	|| token.kind == Kind.INTEGER_LITERAL
+            	|| token.kind == Kind.OCTAL_LITERAL
+            	|| token.kind == Kind.HEXADECIMAL_LITERAL
+            	|| token.kind == Kind.STRING_LITERAL) {
+        	return token.kind.name() + "(" + token.text + ")";
+    	}	
 
+    		return token.kind.name();
+	}
     private static String readAll(Reader reader) throws IOException {
         StringBuilder text = new StringBuilder();
         char[] buffer = new char[8192];
@@ -261,28 +282,35 @@ public final class Scanner {
         return text.toString();
     }
 
-    public static void main(String[] args) {
-        if (args.length > 1) {
-            System.err.println("Usage: java Scanner [program.java]");
-            System.exit(1);
-        }
-        try (Reader reader = args.length == 0
-                ? new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8))
-                : Files.newBufferedReader(Paths.get(args[0]), StandardCharsets.UTF_8)) {
-            Scanner scanner = new Scanner(readAll(reader));
-            Token token;
-            do {
-                token = scanner.nextToken();
+public static void main(String[] args) {
+    if (args.length > 1) {
+        System.err.println("Usage: java Scanner [program.java]");
+        System.exit(1);
+    }
+
+    try (Reader reader = args.length == 0
+            ? new BufferedReader(
+                new InputStreamReader(System.in, StandardCharsets.UTF_8))
+            : Files.newBufferedReader(
+                Paths.get(args[0]), StandardCharsets.UTF_8)) {
+
+        Scanner scanner = new Scanner(readAll(reader));
+
+        while (true) {
+            try {
+                Token token = scanner.nextToken();
                 System.out.println(format(token));
-            } while (token.kind != Kind.EOF);
-        } catch (LexicalException error) {
-            // Provisional policy: print the supplied message to stdout and stop.
-            System.out.println(error.getMessage());
-            System.exit(1);
-        } catch (IOException error) {
-            System.err.println("I/O error: " + error.getMessage());
-            System.exit(1);
+
+                if (token.kind == Kind.EOF) {
+                    break;
+                }
+            } catch (LexicalException error) {
+                System.out.println(error.getMessage());
+            }
         }
+    } catch (IOException error) {
+        System.err.println("I/O error: " + error.getMessage());
+        System.exit(1);
     }
 }
-
+}
