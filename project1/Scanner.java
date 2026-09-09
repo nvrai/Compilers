@@ -175,9 +175,11 @@ private Token scanNumber() throws LexicalException {
     int start = position;
     int base = 10;
     Kind kind = Kind.INTEGER_LITERAL;
+    boolean invalidOctalStart = false;
     String error = "Invalid character in number.";
 
     if (peek(0) == '0' && isDigit(peek(1))) {
+	invalidOctalStart = peek(1) == '8' || peek(1) == '9';
         base = 8;
         kind = Kind.OCTAL_LITERAL;
         error = "Invalid character in octal number.";
@@ -204,13 +206,22 @@ private Token scanNumber() throws LexicalException {
             && !isIdentifierPart(peek(0))) {
         return new Token(kind, source.substring(start, position));
     }
-    if(isIdentifierPart(peek(0))){
-        while (isIdentifierPart(peek(0))) {
-            position++;
-        }
+    if (isIdentifierPart(peek(0))) {
+    	boolean containsLetterOrUnderscore = false;
+
+    	while (isIdentifierPart(peek(0))) {
+        	if (isLetter(peek(0)) || peek(0) == '_') {
+            		containsLetterOrUnderscore = true;
+               }
+                position++;
+         }
+
+   	 if (invalidOctalStart && containsLetterOrUnderscore) {
+        	error = "Invalid character in number.";
+         }
+
         throw new LexicalException(error);
     }
-
     return new Token(kind, source.substring(start, position));
 }
     private Token scanString() throws LexicalException {
