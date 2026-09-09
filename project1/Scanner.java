@@ -25,7 +25,7 @@ public final class Scanner {
     	COMMA, PERIOD, SEMICOLON,
     	CLASS, PUBLIC, STATIC, VOID, MAIN, STRING, EXTENDS,
     	RETURN, INT, BOOLEAN, IF, ELSE, WHILE, LENGTH,
-    	TRUE, FALSE, THIS, NEW, SYSTEM_OUT_PRINTLN,
+    	TRUE, FALSE, THIS, NEW,
     	PRINT, PRINTLN, PRINTINT, READINT,
     	ID, INTEGER_LITERAL, OCTAL_LITERAL, HEXADECIMAL_LITERAL,
     	STRING_LITERAL, EOF
@@ -35,12 +35,12 @@ public final class Scanner {
     private static final Map<String, Kind> KEYWORDS = new HashMap<String, Kind>();
     private static final Map<String, Kind> SYMBOLS = new HashMap<String, Kind>();
     private static final String[] DOTTED_WORDS = {
-        "System.out.println", "Xinu.println", "Xinu.printint",
-        "Xinu.readint", "Xinu.print"
+	"Xinu.println", "Xinu.printint", "Xinu.readint", "Xinu.print"
+
     };
     private static final Kind[] DOTTED_KINDS = {
-    Kind.SYSTEM_OUT_PRINTLN, Kind.PRINTLN, Kind.PRINTINT,
-    Kind.READINT, Kind.PRINT
+	Kind.PRINTLN, Kind.PRINTINT, Kind.READINT, Kind.PRINT
+
     };
     static {
         String[] words = {
@@ -204,8 +204,7 @@ private Token scanNumber() throws LexicalException {
             && !isIdentifierPart(peek(0))) {
         return new Token(kind, source.substring(start, position));
     }
-
-    if (isIdentifierPart(peek(0))) {
+    if(isIdentifierPart(peek(0))){
         while (isIdentifierPart(peek(0))) {
             position++;
         }
@@ -314,3 +313,4 @@ public static void main(String[] args) {
     }
 }
 }
+
