@@ -18,7 +18,7 @@ MJ_JAVACCGEN = $(DEFAULT_JAVACCGEN) \
 	$(PARSEDIR)/$(MJ_PARSER)TokenManager.java
 
 
-# Project 4 - Parser
+# Project 3 - Parser
 
 ASTSRC = $(wildcard Absyn/*.java)
 

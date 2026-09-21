@@ -1,3 +1,10 @@
+/**
+ * COSC 4400 - Project #3
+ * Reads MiniJava from standard input, parses it, and prints its AST.
+ * @authors Nick Raimondi and Payton Canegan
+ * Instructor Dr Brylow
+ * TA-BOT:MAILTO nicolas.raimondi@marquette.edu payton.canegan@marquette.edu
+ */
 package Parse;
 
 import java.io.Reader;

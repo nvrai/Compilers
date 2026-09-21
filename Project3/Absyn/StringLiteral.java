@@ -1,3 +1,10 @@
+/**
+ * COSC 4400 - Project #3
+ * Stores a simple string literal.
+ * @authors Nick Raimondi and Payton Canegan
+ * Instructor Dr Brylow
+ * TA-BOT:MAILTO nicolas.raimondi@marquette.edu payton.canegan@marquette.edu
+ */
 /* Copyright (C) 2009, Marquette University.  All rights reserved. */
 package Absyn;
 

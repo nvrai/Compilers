@@ -1,2 +1,9 @@
 *.class
 *.out
+Project3/Parse/MiniJavaParser.java
+Project3/Parse/MiniJavaParserConstants.java
+Project3/Parse/MiniJavaParserTokenManager.java
+Project3/Parse/ParseException.java
+Project3/Parse/SimpleCharStream.java
+Project3/Parse/Token.java
+Project3/Parse/TokenMgrError.java
