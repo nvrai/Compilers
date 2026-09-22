@@ -6,6 +6,7 @@ JAVACC=javacc
 
 PARSEDIR=Parse
 MJ_PARSER=MiniJavaParser
+MJ_GRAMMAR=MiniJava
 
 DEFAULT_JAVACCGEN = $(PARSEDIR)/SimpleCharStream.java \
 	$(PARSEDIR)/ParseException.java \
@@ -26,8 +27,8 @@ PARSESRC = Parse/Main.java $(ASTSRC)
 
 all:	$(PARSEDIR)/$(MJ_PARSER).java $(PARSESRC:.java=.class)
 
-$(PARSEDIR)/$(MJ_PARSER).java: $(PARSEDIR)/$(MJ_PARSER).jj
-	cd $(PARSEDIR); ${JAVACC} $(MJ_PARSER).jj;
+$(PARSEDIR)/$(MJ_PARSER).java: $(PARSEDIR)/$(MJ_GRAMMAR).jj
+	cd $(PARSEDIR); ${JAVACC} $(MJ_GRAMMAR).jj;
 	${JAVAC} ${JFLAGS} ${MJ_JAVACCGEN}
 
 %.class : %.java

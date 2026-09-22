@@ -38,8 +38,8 @@ public class PrintVisitor implements Visitor {
     public void visit(Formal ast) { indent(); out.print("Formal("); ast.type.accept(this); out.print(" "+ast.name+")"); }
     public void visit(ArrayType ast) { out.print("ArrayType("); ast.base.accept(this); out.print(")"); }
     public void visit(IdentifierType ast) { out.print("IdentifierType("+ast.id+")"); }
-    public void visit(BooleanType ast) { out.print("BooleanType()"); }
-    public void visit(IntegerType ast) { out.print("IntegerType()"); }
+    public void visit(BooleanType ast) { out.print("BooleanType"); }
+    public void visit(IntegerType ast) { out.print("IntegerType"); }
     public void visit(VarDecl ast) { indent(); out.print("VarDecl("); ast.type.accept(this); out.print(" "+ast.name); if(ast.init==null)out.print(" null");else ast.init.accept(this); out.print(")"); }
     public void visit(XinuCallStmt ast) { begin("XinuCallStmt"); out.print(ast.method); visit(ast.args); end(); }
     public void visit(AssignStmt ast) { begin("AssignStmt"); ast.lhs.accept(this); ast.rhs.accept(this); end(); }
@@ -64,6 +64,6 @@ public class PrintVisitor implements Visitor {
     public void visit(NewObjectExpr ast) { begin("NewObjectExpr"); ast.type.accept(this); end(); }
     private void unary(String name, Expr e) { begin(name); e.accept(this); end(); }
     public void visit(NegExpr ast){unary("NegExpr",ast.e1);} public void visit(NotExpr ast){unary("NotExpr",ast.e1);}
-    public void visit(FalseExpr ast){indent();out.print("FalseExpr()");} public void visit(NullExpr ast){indent();out.print("NullExpr()");}
-    public void visit(ThisExpr ast){indent();out.print("ThisExpr()");} public void visit(TrueExpr ast){indent();out.print("TrueExpr()");}
+    public void visit(FalseExpr ast){indent();out.print("FalseExpr");} public void visit(NullExpr ast){indent();out.print("NullExpr");}
+    public void visit(ThisExpr ast){indent();out.print("ThisExpr");} public void visit(TrueExpr ast){indent();out.print("TrueExpr");}
 }
