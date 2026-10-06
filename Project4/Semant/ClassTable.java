@@ -43,6 +43,8 @@ public final class ClassTable {
     private final Map<CLASS, State> states = new IdentityHashMap<CLASS, State>();
     private final Set<CLASS> populated = Collections.newSetFromMap(
             new IdentityHashMap<CLASS, Boolean>());
+    private final Set<CLASS> cyclicClasses = Collections.newSetFromMap(
+            new IdentityHashMap<CLASS, Boolean>());
     private final ErrorReporter errors;
 
     private final CLASS stringClass = new CLASS("String");
@@ -118,7 +120,7 @@ public final class ClassTable {
             if (hasCycle(descriptor)) {
                 errors.report("cyclic inheritance involving " + descriptor.name
                         + ": line not available");
-                instancesAllowed = false;
+                cyclicClasses.add(descriptor);
             }
         }
     }
@@ -137,8 +139,20 @@ public final class ClassTable {
     private void buildMembers() {
         for (CLASS descriptor : programClasses) buildClass(descriptor);
         if (instancesAllowed) {
-            for (CLASS descriptor : programClasses) populateInstance(descriptor);
+            for (CLASS descriptor : programClasses) {
+                if (canPopulate(descriptor)) populateInstance(descriptor);
+            }
         }
+    }
+
+    private boolean canPopulate(CLASS descriptor) {
+        Set<CLASS> visited = Collections.newSetFromMap(new IdentityHashMap<CLASS, Boolean>());
+        CLASS current = descriptor;
+        while (current != null && declarationByClass.containsKey(current)) {
+            if (cyclicClasses.contains(current) || !visited.add(current)) return false;
+            current = current.parent;
+        }
+        return true;
     }
 
     private void buildClass(CLASS descriptor) {
