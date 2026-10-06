@@ -23,8 +23,14 @@ public final class Main {
             new ReadAbsyn(new BufferedInputStream(System.in));
             Program program = ReadAbsyn.Goal();
             ErrorReporter errors = new ErrorReporter();
-            ClassTable.build(program, errors);
+            ClassTable classes = ClassTable.build(program, errors);
             errors.printTo(out);
+            Types.PrintVisitor printer = new Types.PrintVisitor(out);
+            for (Types.CLASS descriptor : classes.programClasses()) {
+                descriptor.accept(printer);
+                out.println();
+            }
+            out.flush();
         } catch (ParseException error) {
             out.println(error.toString());
             out.flush();

@@ -27,7 +27,6 @@ import Types.FUNCTION;
 import Types.INT;
 import Types.OBJECT;
 import Types.RECORD;
-import Types.STRING;
 import Types.Type;
 import Types.VOID;
 
@@ -224,7 +223,6 @@ public final class ClassTable {
         }
         if (type instanceof Absyn.IdentifierType) {
             String name = ((Absyn.IdentifierType) type).id;
-            if ("String".equals(name)) return new STRING();
             CLASS descriptor = classes.get(name);
             if (descriptor == null) {
                 errors.report("cannot resolve class " + name);

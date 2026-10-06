@@ -80,8 +80,9 @@ public final class AstConverter {
 
     private static ThreadDecl threadDecl(AstNode node) {
         require(node, "ThreadDecl");
-        return new ThreadDecl(atom(node, 0), varList(child(node, 1)),
-                methodList(child(node, 2)));
+        int listIndex = node.items.size() == 4 ? 2 : 1;
+        return new ThreadDecl(atom(node, 0), varList(child(node, listIndex)),
+                methodList(child(node, listIndex + 1)));
     }
 
     private static LinkedList<MethodDecl> methodList(AstNode node) {

@@ -26,7 +26,7 @@ public class PrintVisitor implements Visitor {
         out.print(")"); indentCount--;
     }
     public void visit(ClassDecl ast) { begin("ClassDecl"); out.print(ast.name+" "+ast.parent); visit(ast.fields); visit(ast.methods); end(); }
-    public void visit(ThreadDecl ast) { begin("ThreadDecl"); out.print(ast.name); visit(ast.fields); visit(ast.methods); end(); }
+    public void visit(ThreadDecl ast) { begin("ThreadDecl"); out.print(ast.name+" "+ast.parent); visit(ast.fields); visit(ast.methods); end(); }
     public void visit(MethodDecl ast) {
         begin("MethodDecl");
         if(ast.returnType==null) out.print("public_static_void"); else ast.returnType.accept(this);
