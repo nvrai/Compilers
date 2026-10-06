@@ -7,11 +7,14 @@
  */
 package Semant;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.IdentityHashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import Absyn.ClassDecl;
 import Absyn.Formal;
@@ -25,7 +28,6 @@ import Types.CLASS;
 import Types.FIELD;
 import Types.FUNCTION;
 import Types.INT;
-import Types.OBJECT;
 import Types.RECORD;
 import Types.Type;
 import Types.VOID;
@@ -35,13 +37,18 @@ public final class ClassTable {
     private enum State { NEW, BUILDING, BUILT }
 
     private final Table<CLASS> classes = new Table<CLASS>();
-    private final Map<String, ClassDecl> declarations = new LinkedHashMap<String, ClassDecl>();
+    private final Map<CLASS, ClassDecl> declarationByClass =
+            new IdentityHashMap<CLASS, ClassDecl>();
     private final List<CLASS> programClasses = new ArrayList<CLASS>();
     private final Map<CLASS, State> states = new IdentityHashMap<CLASS, State>();
+    private final Set<CLASS> populated = Collections.newSetFromMap(
+            new IdentityHashMap<CLASS, Boolean>());
     private final ErrorReporter errors;
 
     private final CLASS stringClass = new CLASS("String");
     private final CLASS threadClass = new CLASS("Thread");
+    private boolean duplicateClasses;
+    private boolean instancesAllowed = true;
 
     private ClassTable(ErrorReporter errors) {
         this.errors = errors;
@@ -53,6 +60,7 @@ public final class ClassTable {
     public static ClassTable build(Program program, ErrorReporter errors) {
         ClassTable table = new ClassTable(errors);
         table.collectClasses(program);
+        if (table.duplicateClasses) return table;
         table.resolveParents();
         table.checkInheritance();
         table.buildMembers();
@@ -75,26 +83,30 @@ public final class ClassTable {
 
     private void collectClasses(Program program) {
         for (ClassDecl declaration : program.classes) {
-            if (classes.get(declaration.name) != null) {
-                errors.report("duplicate class");
-                continue;
-            }
             CLASS descriptor = new CLASS(declaration.name);
-            classes.put(declaration.name, descriptor);
-            declarations.put(declaration.name, declaration);
             programClasses.add(descriptor);
+            declarationByClass.put(descriptor, declaration);
             states.put(descriptor, State.NEW);
+
+            if (classes.get(declaration.name) != null) {
+                errors.report("duplicate class: " + declaration.name + ": line not available");
+                duplicateClasses = true;
+            } else {
+                classes.put(declaration.name, descriptor);
+            }
         }
     }
 
     private void resolveParents() {
         for (CLASS descriptor : programClasses) {
-            ClassDecl declaration = declarations.get(descriptor.name);
+            ClassDecl declaration = declarationByClass.get(descriptor);
             if (declaration.parent == null) continue;
 
             CLASS parent = classes.get(declaration.parent);
             if (parent == null) {
-                errors.report("cannot resolve parent class " + declaration.parent);
+                errors.report("cannot resolve parent class: " + declaration.parent
+                        + ": line not available");
+                instancesAllowed = false;
             } else {
                 descriptor.parent = parent;
             }
@@ -102,72 +114,58 @@ public final class ClassTable {
     }
 
     private void checkInheritance() {
-        Map<CLASS, Integer> colors = new IdentityHashMap<CLASS, Integer>();
         for (CLASS descriptor : programClasses) {
-            if (!colors.containsKey(descriptor)) visitParent(descriptor, colors);
+            if (hasCycle(descriptor)) {
+                errors.report("cyclic inheritance involving " + descriptor.name
+                        + ": line not available");
+                instancesAllowed = false;
+            }
         }
     }
 
-    private void visitParent(CLASS descriptor, Map<CLASS, Integer> colors) {
-        colors.put(descriptor, Integer.valueOf(1));
-        CLASS parent = descriptor.parent;
-        if (parent != null && declarations.containsKey(parent.name)) {
-            Integer color = colors.get(parent);
-            if (color == null) {
-                visitParent(parent, colors);
-            } else if (color.intValue() == 1) {
-                errors.report("cyclic inheritance involving " + parent.name);
-                descriptor.parent = null;
-            }
+    private boolean hasCycle(CLASS start) {
+        Set<CLASS> visited = Collections.newSetFromMap(new IdentityHashMap<CLASS, Boolean>());
+        CLASS current = start.parent;
+        while (current != null && declarationByClass.containsKey(current)) {
+            if (current == start) return true;
+            if (!visited.add(current)) return false;
+            current = current.parent;
         }
-        colors.put(descriptor, Integer.valueOf(2));
+        return false;
     }
 
     private void buildMembers() {
         for (CLASS descriptor : programClasses) buildClass(descriptor);
+        if (instancesAllowed) {
+            for (CLASS descriptor : programClasses) populateInstance(descriptor);
+        }
     }
 
     private void buildClass(CLASS descriptor) {
         State state = states.get(descriptor);
-        if (state == State.BUILT) return;
-        if (state == State.BUILDING) return;
+        if (state == State.BUILT || state == State.BUILDING) return;
         states.put(descriptor, State.BUILDING);
 
-        if (descriptor.parent != null && declarations.containsKey(descriptor.parent.name)) {
+        if (descriptor.parent != null && declarationByClass.containsKey(descriptor.parent)) {
             buildClass(descriptor.parent);
         }
 
-        ClassDecl declaration = declarations.get(descriptor.name);
-        addFields(descriptor, declaration);
+        ClassDecl declaration = declarationByClass.get(descriptor);
         addMethods(descriptor, declaration);
-        createInstanceMembers(descriptor);
+        addFields(descriptor, declaration);
         states.put(descriptor, State.BUILT);
-    }
-
-    private void addFields(CLASS descriptor, ClassDecl declaration) {
-        for (VarDecl field : declaration.fields) {
-            if (descriptor.fields.get(field.name) != null) {
-                errors.report(field.name + " is already defined in " + descriptor.name);
-                continue;
-            }
-            descriptor.fields.put(resolveType(field.type), field.name);
-        }
     }
 
     private void addMethods(CLASS descriptor, ClassDecl declaration) {
         for (MethodDecl method : declaration.methods) {
-            if (descriptor.methods.get(method.name) != null) {
-                errors.report(method.name + " is already defined in " + descriptor.name);
-                continue;
-            }
-
             RECORD formals = new RECORD();
             for (Formal formal : method.params) {
-                if (formals.get(formal.name) != null) {
-                    errors.report(formal.name + " is already defined in " + method.name);
-                    continue;
+                FIELD previous = formals.put(resolveType(formal.type), formal.name);
+                if (previous != null) {
+                    errors.report(formal.name + " is already defined in " + method.name
+                            + ": " + describe(formal));
+                    instancesAllowed = false;
                 }
-                formals.put(resolveType(formal.type), formal.name);
             }
 
             Type result = method.returnType == null ? new VOID() : resolveType(method.returnType);
@@ -177,19 +175,46 @@ public final class ClassTable {
             if (inherited != null && inherited.type instanceof FUNCTION
                     && !function.coerceTo(inherited.type)) {
                 errors.report("incompatible method override: " + method.name
-                        + " in class " + descriptor.name);
+                        + " in class " + descriptor.name + ": line not available");
             }
-            descriptor.methods.put(function, method.name);
+
+            FIELD previous = descriptor.methods.put(function, method.name);
+            if (previous != null) {
+                errors.report(method.name + " is already defined in " + descriptor.name
+                        + ": " + describe(method));
+                instancesAllowed = false;
+            }
+        }
+    }
+
+    private void addFields(CLASS descriptor, ClassDecl declaration) {
+        for (VarDecl field : declaration.fields) {
+            FIELD previous = descriptor.fields.put(resolveType(field.type), field.name);
+            if (previous != null) {
+                errors.report(field.name + " is already defined in " + descriptor.name
+                        + ": " + describe(field));
+                instancesAllowed = false;
+            }
         }
     }
 
     private FIELD inheritedMethod(CLASS parent, String name) {
-        while (parent != null) {
+        Set<CLASS> visited = Collections.newSetFromMap(new IdentityHashMap<CLASS, Boolean>());
+        while (parent != null && visited.add(parent)) {
             FIELD method = parent.methods.get(name);
             if (method != null) return method;
             parent = parent.parent;
         }
         return null;
+    }
+
+    private void populateInstance(CLASS descriptor) {
+        if (populated.contains(descriptor)) return;
+        if (descriptor.parent != null && declarationByClass.containsKey(descriptor.parent)) {
+            populateInstance(descriptor.parent);
+        }
+        createInstanceMembers(descriptor);
+        populated.add(descriptor);
     }
 
     private void createInstanceMembers(CLASS descriptor) {
@@ -225,11 +250,20 @@ public final class ClassTable {
             String name = ((Absyn.IdentifierType) type).id;
             CLASS descriptor = classes.get(name);
             if (descriptor == null) {
-                errors.report("cannot resolve class " + name);
-                return new OBJECT(new CLASS(name));
+                errors.report("cannot resolve class " + name + ": IdentifierType(" + name + ")");
+                instancesAllowed = false;
+                return new VOID();
             }
             return descriptor.instance;
         }
         throw new IllegalArgumentException("Unknown AST type " + type.getClass().getName());
+    }
+
+    private static String describe(Absyn.Visitable node) {
+        StringWriter text = new StringWriter();
+        Absyn.PrintVisitor printer = new Absyn.PrintVisitor(new PrintWriter(text));
+        printer.indentCount = 10;
+        node.accept(printer);
+        return text.toString();
     }
 }
