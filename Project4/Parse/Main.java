@@ -1,5 +1,5 @@
 /**
- * COSC 4400 - Project #3
+ * COSC 4400 - Project #4
  * Reads MiniJava from standard input, parses it, and prints its AST.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow

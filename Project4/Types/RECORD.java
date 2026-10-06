@@ -1,3 +1,10 @@
+/**
+ * COSC 4400 - Project #4
+ * Provides a type descriptor used during MiniJava semantic analysis.
+ * @authors Nick Raimondi and Payton Canegan
+ * Instructor Dr Brylow
+ * TA-BOT:MAILTO nicolas.raimondi@marquette.edu payton.canegan@marquette.edu
+ */
 /* Copyright (C) 1997-2003, Purdue Research Foundation of Purdue University.
  * All rights reserved.  */
 /* Copyright (C) 2007, Marquette University.  All rights reserved. */

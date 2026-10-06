@@ -1,0 +1,37 @@
+/**
+ * COSC 4400 - Project #4
+ * Defines a JavaCC parser for the textual abstract syntax tree format.
+ * @authors Nick Raimondi and Payton Canegan
+ * Instructor Dr Brylow
+ * TA-BOT:MAILTO nicolas.raimondi@marquette.edu payton.canegan@marquette.edu
+ */
+PARSER_BEGIN(ReadAbsyn)
+package Parse;
+
+public class ReadAbsyn { }
+PARSER_END(ReadAbsyn)
+
+SKIP : { " " | "\t" | "\n" | "\r" | "\f" }
+
+TOKEN : {
+    < LPAREN: "(" >
+  | < RPAREN: ")" >
+  | < STRING_VALUE: "\"" (~["\"", "\n", "\r"])* "\"" >
+  | < ATOM: (~[" ", "\t", "\n", "\r", "\f", "(", ")"])+ >
+}
+
+Absyn.Program Goal() : { AstNode root; } {
+    root=Node() <EOF> { return AstConverter.program(root); }
+}
+
+AstNode Node() : { Token name; AstNode node; Object value; } {
+    name=<ATOM> <LPAREN> { node = new AstNode(name.image); }
+    ( value=Value() { node.add(value); } )*
+    <RPAREN> { return node; }
+}
+
+Object Value() : { AstNode node; Token token; } {
+      LOOKAHEAD(2) node=Node() { return node; }
+    | token=<STRING_VALUE> { return token.image; }
+    | token=<ATOM> { return token.image; }
+}

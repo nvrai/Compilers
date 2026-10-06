@@ -1,5 +1,5 @@
 /**
- * COSC 4400 - Project #3
+ * COSC 4400 - Project #4
  * Stores a class declaration, its fields, and its methods.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow
