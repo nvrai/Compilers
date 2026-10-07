@@ -12,6 +12,7 @@ import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -51,6 +52,7 @@ public final class ClassTable {
     private final CLASS threadClass = new CLASS("Thread");
     private boolean duplicateClasses;
     private boolean instancesAllowed = true;
+    private boolean descriptorOutputAllowed = true;
 
     private ClassTable(ErrorReporter errors) {
         this.errors = errors;
@@ -77,6 +79,10 @@ public final class ClassTable {
         return new ArrayList<CLASS>(programClasses);
     }
 
+    public boolean descriptorOutputAllowed() {
+        return descriptorOutputAllowed;
+    }
+
     private void addThreadRunMethod() {
         FUNCTION run = new FUNCTION("run", threadClass.instance, new RECORD(), new VOID());
         threadClass.methods.put(run, "run");
@@ -93,6 +99,7 @@ public final class ClassTable {
             if (classes.get(declaration.name) != null) {
                 errors.report("duplicate class: " + declaration.name + ": line not available");
                 duplicateClasses = true;
+                descriptorOutputAllowed = false;
             } else {
                 classes.put(declaration.name, descriptor);
             }
@@ -109,6 +116,7 @@ public final class ClassTable {
                 errors.report("cannot resolve parent class: " + declaration.parent
                         + ": line not available");
                 instancesAllowed = false;
+                descriptorOutputAllowed = false;
             } else {
                 descriptor.parent = parent;
             }
@@ -121,6 +129,7 @@ public final class ClassTable {
                 errors.report("cyclic inheritance involving " + descriptor.name
                         + ": line not available");
                 cyclicClasses.add(descriptor);
+                descriptorOutputAllowed = false;
             }
         }
     }
@@ -190,6 +199,10 @@ public final class ClassTable {
                     && !function.coerceTo(inherited.type)) {
                 errors.report("incompatible method override: " + method.name
                         + " in class " + descriptor.name + ": line not available");
+                if (!sameFormals(function.formals,
+                        ((FUNCTION) inherited.type).formals)) {
+                    descriptorOutputAllowed = false;
+                }
             }
 
             FIELD previous = descriptor.methods.put(function, method.name);
@@ -222,6 +235,19 @@ public final class ClassTable {
         return null;
     }
 
+    private static boolean sameFormals(RECORD first, RECORD second) {
+        Iterator<FIELD> firstFields = first.iterator();
+        Iterator<FIELD> secondFields = second.iterator();
+        while (firstFields.hasNext() && secondFields.hasNext()) {
+            Type firstType = firstFields.next().type;
+            Type secondType = secondFields.next().type;
+            if (!firstType.coerceTo(secondType) || !secondType.coerceTo(firstType)) {
+                return false;
+            }
+        }
+        return !firstFields.hasNext() && !secondFields.hasNext();
+    }
+
     private void populateInstance(CLASS descriptor) {
         if (populated.contains(descriptor)) return;
         if (descriptor.parent != null && declarationByClass.containsKey(descriptor.parent)) {
@@ -236,7 +262,7 @@ public final class ClassTable {
         RECORD methods = new RECORD();
 
         if (descriptor.parent != null) {
-            copy(descriptor.parent.instance.fields, fields, descriptor.fields);
+            copy(descriptor.parent.instance.fields, fields, null);
             copy(descriptor.parent.instance.methods, methods, descriptor.methods);
         }
         copy(descriptor.fields, fields, null);

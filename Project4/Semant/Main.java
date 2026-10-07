@@ -26,10 +26,12 @@ public final class Main {
             ErrorReporter errors = new ErrorReporter();
             ClassTable classes = ClassTable.build(program, errors);
             errors.printTo(errorOut);
-            Types.PrintVisitor printer = new Types.PrintVisitor(out);
-            for (Types.CLASS descriptor : classes.programClasses()) {
-                descriptor.accept(printer);
-                out.println();
+            if (classes.descriptorOutputAllowed()) {
+                Types.PrintVisitor printer = new Types.PrintVisitor(out);
+                for (Types.CLASS descriptor : classes.programClasses()) {
+                    descriptor.accept(printer);
+                    out.println();
+                }
             }
             out.flush();
         } catch (ParseException error) {
