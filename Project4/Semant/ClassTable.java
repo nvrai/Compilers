@@ -12,7 +12,6 @@ import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -199,10 +198,7 @@ public final class ClassTable {
                     && !function.coerceTo(inherited.type)) {
                 errors.report("incompatible method override: " + method.name
                         + " in class " + descriptor.name + ": line not available");
-                if (!sameFormals(function.formals,
-                        ((FUNCTION) inherited.type).formals)) {
-                    descriptorOutputAllowed = false;
-                }
+                descriptorOutputAllowed = false;
             }
 
             FIELD previous = descriptor.methods.put(function, method.name);
@@ -233,19 +229,6 @@ public final class ClassTable {
             parent = parent.parent;
         }
         return null;
-    }
-
-    private static boolean sameFormals(RECORD first, RECORD second) {
-        Iterator<FIELD> firstFields = first.iterator();
-        Iterator<FIELD> secondFields = second.iterator();
-        while (firstFields.hasNext() && secondFields.hasNext()) {
-            Type firstType = firstFields.next().type;
-            Type secondType = secondFields.next().type;
-            if (!firstType.coerceTo(secondType) || !secondType.coerceTo(firstType)) {
-                return false;
-            }
-        }
-        return !firstFields.hasNext() && !secondFields.hasNext();
     }
 
     private void populateInstance(CLASS descriptor) {
