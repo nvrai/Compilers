@@ -1,5 +1,5 @@
 /**
- * COSC 4400 - Project #4
+ * COSC 4400 - Project 5
  * Prints the completed AST in the required format.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow
@@ -25,22 +25,28 @@ public class PrintVisitor implements Visitor {
         for (Object item:list) { if(item==null){indent();out.print("null");} else ((Visitable)item).accept(this); }
         out.print(")"); indentCount--;
     }
-    public void visit(ClassDecl ast) { begin("ClassDecl"); out.print(ast.name+" "+ast.parent); visit(ast.fields); visit(ast.methods); end(); }
-    public void visit(ThreadDecl ast) { begin("ThreadDecl"); out.print(ast.name+" "+ast.parent); visit(ast.fields); visit(ast.methods); end(); }
+    private void descriptor(Types.Type type) {
+        if (type == null) return;
+        Types.PrintVisitor printer = new Types.PrintVisitor(out);
+        printer.indentCount = indentCount;
+        type.accept(printer);
+    }
+    public void visit(ClassDecl ast) { begin("ClassDecl"); out.print(ast.name+" "+ast.parent); visit(ast.fields); visit(ast.methods); descriptor(ast.descriptor); end(); }
+    public void visit(ThreadDecl ast) { begin("ThreadDecl"); out.print(ast.name+" "+ast.parent); visit(ast.fields); visit(ast.methods); descriptor(ast.descriptor); end(); }
     public void visit(MethodDecl ast) {
         begin("MethodDecl");
         if(ast.returnType==null) out.print("public_static_void"); else ast.returnType.accept(this);
         if(ast.synced) out.print(" synchronized"); out.print(" "+ast.name);
         visit(ast.params); visit(ast.locals); visit(ast.stmts);
-        if(ast.returnVal==null){indent();out.print("null");} else ast.returnVal.accept(this); end();
+        if(ast.returnVal==null){indent();out.print("null");} else ast.returnVal.accept(this); descriptor(ast.descriptor); end();
     }
-    public void visit(VoidDecl ast) { begin("VoidDecl"); out.print(ast.name); visit(ast.locals); visit(ast.stmts); end(); }
+    public void visit(VoidDecl ast) { begin("VoidDecl"); out.print(ast.name); visit(ast.locals); visit(ast.stmts); descriptor(ast.descriptor); end(); }
     public void visit(Formal ast) { indent(); out.print("Formal("); ast.type.accept(this); out.print(" "+ast.name+")"); }
     public void visit(ArrayType ast) { out.print("ArrayType("); ast.base.accept(this); out.print(")"); }
     public void visit(IdentifierType ast) { out.print("IdentifierType("+ast.id+")"); }
     public void visit(BooleanType ast) { out.print("BooleanType"); }
     public void visit(IntegerType ast) { out.print("IntegerType"); }
-    public void visit(VarDecl ast) { indent(); out.print("VarDecl("); ast.type.accept(this); out.print(" "+ast.name); if(ast.init==null)out.print(" null");else ast.init.accept(this); out.print(")"); }
+    public void visit(VarDecl ast) { indent(); out.print("VarDecl("); ast.type.accept(this); out.print(" "+ast.name); indentCount++; if(ast.init==null)out.print(" null");else ast.init.accept(this); if(ast.semanticType!=null){out.print(" ");descriptor(ast.semanticType);} indentCount--; out.print(")"); }
     public void visit(XinuCallStmt ast) { begin("XinuCallStmt"); out.print(ast.method); visit(ast.args); end(); }
     public void visit(AssignStmt ast) { begin("AssignStmt"); ast.lhs.accept(this); ast.rhs.accept(this); end(); }
     public void visit(BlockStmt ast) { begin("BlockStmt"); visit(ast.stmts); end(); }
@@ -54,8 +60,8 @@ public class PrintVisitor implements Visitor {
     public void visit(MulExpr ast){binary("MulExpr",ast);} public void visit(NotEqExpr ast){binary("NotEqExpr",ast);}
     public void visit(OrExpr ast){binary("OrExpr",ast);} public void visit(SubExpr ast){binary("SubExpr",ast);}
     public void visit(ArrayExpr ast) { begin("ArrayExpr"); ast.target.accept(this); ast.index.accept(this); end(); }
-    public void visit(CallExpr ast) { begin("CallExpr"); ast.target.accept(this); indent(); out.print(ast.method); visit(ast.args); end(); }
-    public void visit(FieldExpr ast) { begin("FieldExpr"); ast.target.accept(this); indent(); out.print(ast.field); end(); }
+    public void visit(CallExpr ast) { begin("CallExpr"); ast.target.accept(this); indent(); out.print(ast.method); visit(ast.args); if(ast.index!=null){indent();out.print(ast.index);} end(); }
+    public void visit(FieldExpr ast) { begin("FieldExpr"); ast.target.accept(this); indent(); out.print(ast.field); if(ast.index!=null){indent();out.print(ast.index);} end(); }
     public void visit(IdentifierExpr ast) { indent(); out.print("IdentifierExpr("+ast.id+")"); }
     public void visit(IntegerLiteral ast) { indent(); out.print("IntegerLiteral("+ast.value+")"); }
     public void visit(StringLiteral ast) { indent(); out.print("StringLiteral("+ast.value+")"); }

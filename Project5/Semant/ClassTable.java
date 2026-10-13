@@ -1,14 +1,12 @@
 /**
- * COSC 4400 - Project #4
- * Builds class, field, and method descriptors for a MiniJava program.
+ * COSC 4400 - Project 5
+ * Builds and queries the class environment used by the MiniJava type checker.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow
  * TA-BOT:MAILTO nicolas.raimondi@marquette.edu payton.canegan@marquette.edu
  */
 package Semant;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -39,6 +37,10 @@ public final class ClassTable {
     private final Table<CLASS> classes = new Table<CLASS>();
     private final Map<CLASS, ClassDecl> declarationByClass =
             new IdentityHashMap<CLASS, ClassDecl>();
+    private final Map<ClassDecl, CLASS> classByDeclaration =
+            new IdentityHashMap<ClassDecl, CLASS>();
+    private final Map<MethodDecl, FUNCTION> functionByDeclaration =
+            new IdentityHashMap<MethodDecl, FUNCTION>();
     private final List<CLASS> programClasses = new ArrayList<CLASS>();
     private final Map<CLASS, State> states = new IdentityHashMap<CLASS, State>();
     private final Set<CLASS> populated = Collections.newSetFromMap(
@@ -50,6 +52,7 @@ public final class ClassTable {
     private final CLASS stringClass = new CLASS("String");
     private final CLASS threadClass = new CLASS("Thread");
     private boolean duplicateClasses;
+    private boolean unresolvedParents;
     private boolean instancesAllowed = true;
     private boolean descriptorOutputAllowed = true;
 
@@ -82,6 +85,55 @@ public final class ClassTable {
         return descriptorOutputAllowed;
     }
 
+    /** Returns the descriptor associated with a source-level class declaration. */
+    public CLASS descriptorFor(ClassDecl declaration) {
+        return classByDeclaration.get(declaration);
+    }
+
+    /** Returns the descriptor associated with a source-level method declaration. */
+    public FUNCTION descriptorFor(MethodDecl declaration) {
+        return functionByDeclaration.get(declaration);
+    }
+
+    /** True when class names and inheritance are sound enough for expression checking. */
+    public boolean canTypeCheck() {
+        return !duplicateClasses && !unresolvedParents && cyclicClasses.isEmpty();
+    }
+
+    /** Resolves an AST type in the global class environment. */
+    public Type typeOf(Absyn.Type type) {
+        return resolveType(type);
+    }
+
+    /** Looks up an instance field, including inherited fields. */
+    public FIELD lookupField(CLASS owner, String name) {
+        FIELD instanceField = owner.instance.fields.get(name);
+        if (instanceField != null) return instanceField;
+        Set<CLASS> visited = Collections.newSetFromMap(new IdentityHashMap<CLASS, Boolean>());
+        for (CLASS current = owner; current != null && visited.add(current);
+                current = current.parent) {
+            FIELD field = current.fields.get(name);
+            if (field != null) return field;
+        }
+        return null;
+    }
+
+    /** Looks up an instance method, including inherited methods. */
+    public FUNCTION lookupMethod(CLASS owner, String name) {
+        FIELD field = lookupMethodField(owner, name);
+        if (field != null && field.type instanceof FUNCTION) {
+            return (FUNCTION) field.type;
+        }
+        return null;
+    }
+
+    /** Looks up a method field so calls can retain its dispatch-table index. */
+    public FIELD lookupMethodField(CLASS owner, String name) {
+        FIELD instanceMethod = owner.instance.methods.get(name);
+        if (instanceMethod != null) return instanceMethod;
+        return inheritedMethod(owner, name);
+    }
+
     private void addThreadRunMethod() {
         FUNCTION run = new FUNCTION("run", threadClass.instance, new RECORD(), new VOID());
         threadClass.methods.put(run, "run");
@@ -93,6 +145,8 @@ public final class ClassTable {
             CLASS descriptor = new CLASS(declaration.name);
             programClasses.add(descriptor);
             declarationByClass.put(descriptor, declaration);
+            classByDeclaration.put(declaration, descriptor);
+            declaration.descriptor = descriptor;
             states.put(descriptor, State.NEW);
 
             if (classes.get(declaration.name) != null) {
@@ -114,6 +168,7 @@ public final class ClassTable {
             if (parent == null) {
                 errors.report("cannot resolve parent class: " + declaration.parent
                         + ": line not available");
+                unresolvedParents = true;
                 instancesAllowed = false;
                 descriptorOutputAllowed = false;
             } else {
@@ -184,14 +239,15 @@ public final class ClassTable {
             for (Formal formal : method.params) {
                 FIELD previous = formals.put(resolveType(formal.type), formal.name);
                 if (previous != null) {
-                    errors.report(formal.name + " is already defined in " + method.name
-                            + ": " + describe(formal));
+                    errors.report(formal.name + " is already defined in " + method.name,
+                            formal);
                     instancesAllowed = false;
                 }
             }
 
             Type result = method.returnType == null ? new VOID() : resolveType(method.returnType);
             FUNCTION function = new FUNCTION(method.name, descriptor.instance, formals, result);
+            functionByDeclaration.put(method, function);
 
             FIELD inherited = inheritedMethod(descriptor.parent, method.name);
             if (inherited != null && inherited.type instanceof FUNCTION
@@ -203,21 +259,24 @@ public final class ClassTable {
 
             FIELD previous = descriptor.methods.put(function, method.name);
             if (previous != null) {
-                errors.report(method.name + " is already defined in " + descriptor.name
-                        + ": " + describe(method));
+                errors.report(method.name + " is already defined in " + descriptor.name,
+                        method);
                 instancesAllowed = false;
             }
+            method.descriptor = function;
         }
     }
 
     private void addFields(CLASS descriptor, ClassDecl declaration) {
         for (VarDecl field : declaration.fields) {
-            FIELD previous = descriptor.fields.put(resolveType(field.type), field.name);
+            Type fieldType = resolveType(field.type);
+            FIELD previous = descriptor.fields.put(fieldType, field.name);
             if (previous != null) {
-                errors.report(field.name + " is already defined in " + descriptor.name
-                        + ": " + describe(field));
+                errors.report(field.name + " is already defined in " + descriptor.name,
+                        field);
                 instancesAllowed = false;
             }
+            field.semanticType = fieldType;
         }
     }
 
@@ -273,7 +332,7 @@ public final class ClassTable {
             String name = ((Absyn.IdentifierType) type).id;
             CLASS descriptor = classes.get(name);
             if (descriptor == null) {
-                errors.report("cannot resolve class " + name + ": IdentifierType(" + name + ")");
+                errors.report("cannot resolve class " + name, type);
                 instancesAllowed = false;
                 return new VOID();
             }
@@ -282,11 +341,4 @@ public final class ClassTable {
         throw new IllegalArgumentException("Unknown AST type " + type.getClass().getName());
     }
 
-    private static String describe(Absyn.Visitable node) {
-        StringWriter text = new StringWriter();
-        Absyn.PrintVisitor printer = new Absyn.PrintVisitor(new PrintWriter(text));
-        printer.indentCount = 10;
-        node.accept(printer);
-        return text.toString();
-    }
 }

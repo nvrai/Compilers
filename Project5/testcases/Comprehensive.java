@@ -1,5 +1,5 @@
 /**
- * COSC 4400 - Project #4
+ * COSC 4400 - Project 5
  * Provides a MiniJava test case for the class descriptor pass.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow
@@ -10,7 +10,7 @@ class Main {
     int x = 1 + 2 * 3;
     int[] a = new int[10];
     x = a[0] + Xinu.readint();
-    if (x > 2 && true) Xinu.printint(x); else { Xinu.println("small"); }
+    if (x > 2 && true) Xinu.printint(x); else { Xinu.print("small"); Xinu.println(); }
     while (x != 0) x = x - 1;
   }
 }
@@ -26,6 +26,7 @@ class Worker extends Thread {
   int[] data;
   public void run() {
     data = new int[4][];
-    Xinu.println("done");
+    Xinu.print("done");
+    Xinu.println();
   }
 }

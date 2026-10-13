@@ -1,5 +1,5 @@
 /**
- * COSC 4400 - Project #4
+ * COSC 4400 - Project 5
  * Provides a MiniJava test case for the class descriptor pass.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow
@@ -10,6 +10,7 @@ class Precedence {
     int result = 1 + 2 * 3 - 8 / 4;
     boolean test = 1 + 2 * 3 < 8 && true || false;
     Xinu.printint(result);
-    Xinu.println("precedence complete");
+    Xinu.print("precedence complete");
+    Xinu.println();
   }
 }

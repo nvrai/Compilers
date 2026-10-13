@@ -1,5 +1,5 @@
 /**
- * COSC 4400 - Project #4
+ * COSC 4400 - Project 5
  * Prints class and member type descriptors in the reference format.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow
@@ -11,7 +11,7 @@ import java.io.PrintWriter;
 
 public final class PrintVisitor implements Visitor {
     private final PrintWriter out;
-    private int indentCount;
+    public int indentCount;
 
     public PrintVisitor(PrintWriter out) {
         this.out = out;

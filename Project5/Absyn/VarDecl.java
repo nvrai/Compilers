@@ -1,5 +1,5 @@
 /**
- * COSC 4400 - Project #4
+ * COSC 4400 - Project 5
  * Stores a variable or field declaration.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow
@@ -17,6 +17,7 @@ public class VarDecl extends Absyn
     public Type type;
     public String name;
     public Expr init;
+    public Types.Type semanticType;
     public VarDecl(Type type, String name, Expr init)
     {
 		this.type = type;

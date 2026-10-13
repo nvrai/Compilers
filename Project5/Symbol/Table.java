@@ -1,5 +1,5 @@
 /**
- * COSC 4400 - Project #4
+ * COSC 4400 - Project 5
  * Implements a scoped symbol table for semantic analysis.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow

@@ -1,5 +1,5 @@
 /**
- * COSC 4400 - Project #4
+ * COSC 4400 - Project 5
  * Represents an array type in the AST.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow

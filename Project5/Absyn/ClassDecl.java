@@ -1,5 +1,5 @@
 /**
- * COSC 4400 - Project #4
+ * COSC 4400 - Project 5
  * Stores a class declaration, its fields, and its methods.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow
@@ -19,6 +19,7 @@ public class ClassDecl extends Absyn
     public String parent;
     public LinkedList<VarDecl> fields;
     public LinkedList<MethodDecl> methods;
+    public Types.CLASS descriptor;
     public ClassDecl(String name, String parent, 
 		     LinkedList<VarDecl> fields, LinkedList<MethodDecl> methods)
     {

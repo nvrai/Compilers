@@ -1,6 +1,6 @@
 /**
- * COSC 4400 - Project #4
- * Reads an abstract syntax tree and builds its MiniJava class descriptors.
+ * COSC 4400 - Project 5
+ * Reads an abstract syntax tree and type checks the represented MiniJava program.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow
  * TA-BOT:MAILTO nicolas.raimondi@marquette.edu payton.canegan@marquette.edu
@@ -25,13 +25,12 @@ public final class Main {
             Program program = ReadAbsyn.Goal();
             ErrorReporter errors = new ErrorReporter();
             ClassTable classes = ClassTable.build(program, errors);
+            if (classes.canTypeCheck()) {
+                new TypeChecker(classes, errors).check(program);
+            }
             errors.printTo(errorOut);
-            if (classes.descriptorOutputAllowed()) {
-                Types.PrintVisitor printer = new Types.PrintVisitor(out);
-                for (Types.CLASS descriptor : classes.programClasses()) {
-                    descriptor.accept(printer);
-                    out.println();
-                }
+            if (!errors.anyErrors()) {
+                new Absyn.PrintVisitor(out).visit(program);
             }
             out.flush();
         } catch (ParseException error) {

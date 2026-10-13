@@ -1,5 +1,5 @@
 /**
- * COSC 4400 - Project #4
+ * COSC 4400 - Project 5
  * Tests inherited field hiding in class descriptors.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow

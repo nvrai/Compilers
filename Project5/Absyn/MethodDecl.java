@@ -1,5 +1,5 @@
 /**
- * COSC 4400 - Project #4
+ * COSC 4400 - Project 5
  * Stores a method declaration and its body.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow
@@ -22,6 +22,7 @@ public class MethodDecl extends Absyn
     public LinkedList<VarDecl> locals;
     public LinkedList<Stmt> stmts;
     public Expr returnVal;
+    public Types.FUNCTION descriptor;
  
     public MethodDecl(Type returnType,
 		      boolean synced,

@@ -1,5 +1,5 @@
 /**
- * COSC 4400 - Project #4
+ * COSC 4400 - Project 5
  * Provides a MiniJava test case for the class descriptor pass.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow
@@ -7,7 +7,8 @@
  */
 class ValidDescriptors {
     public static void main(String[] args) {
-        Xinu.println("descriptors built");
+        Xinu.print("descriptors built");
+        Xinu.println();
     }
 }
 
@@ -29,6 +30,7 @@ class Child extends Parent {
 
 class Worker extends Thread {
     public void run() {
-        Xinu.println("running");
+        Xinu.print("running");
+        Xinu.println();
     }
 }

@@ -1,5 +1,5 @@
 /**
- * COSC 4400 - Project #4
+ * COSC 4400 - Project 5
  * Stores a formal method parameter and its type.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow

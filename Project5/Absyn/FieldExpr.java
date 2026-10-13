@@ -1,5 +1,5 @@
 /**
- * COSC 4400 - Project #4
+ * COSC 4400 - Project 5
  * Represents field selection on an object.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow
@@ -7,6 +7,6 @@
  */
 package Absyn;
 public class FieldExpr extends AssignableExpr {
-    public Expr target; public String field; public FieldExpr(Expr target, String field) { this.target=target; this.field=field; }
+    public Expr target; public String field; public Integer index; public FieldExpr(Expr target, String field) { this.target=target; this.field=field; }
     public void accept(Visitor v) { v.visit(this); }
 }

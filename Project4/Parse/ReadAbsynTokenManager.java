@@ -171,7 +171,7 @@ static protected Token jjFillToken()
    return t;
 }
 static final int[] jjnextStates = {
-   1, 2,
+   1, 2, 
 };
 
 static int curLexState = 0;
@@ -182,7 +182,7 @@ static int jjmatchedPos;
 static int jjmatchedKind;
 
 /** Get the next Token. */
-public static Token getNextToken()
+public static Token getNextToken() 
 {
   Token matchedToken;
   int curPos = 0;
@@ -308,7 +308,7 @@ static private void jjCheckNAddTwoStates(int state1, int state2)
   }
 
   /** Reinitialise parser. */
-
+  
   static public void ReInit(SimpleCharStream stream)
   {
 
@@ -331,7 +331,7 @@ static private void jjCheckNAddTwoStates(int state1, int state2)
 
   /** Reinitialise parser. */
   static public void ReInit(SimpleCharStream stream, int lexState)
-
+  
   {
     ReInit(stream);
     SwitchTo(lexState);
@@ -354,19 +354,19 @@ public static final String[] lexStateNames = {
 
 /** Lex State array. */
 public static final int[] jjnewLexState = {
-   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
 };
 static final long[] jjtoToken = {
-   0x3c1L,
+   0x3c1L, 
 };
 static final long[] jjtoSkip = {
-   0x3eL,
+   0x3eL, 
 };
 static final long[] jjtoSpecial = {
-   0x0L,
+   0x0L, 
 };
 static final long[] jjtoMore = {
-   0x0L,
+   0x0L, 
 };
     static protected SimpleCharStream  input_stream;
 

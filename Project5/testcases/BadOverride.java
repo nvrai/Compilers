@@ -1,5 +1,5 @@
 /**
- * COSC 4400 - Project #4
+ * COSC 4400 - Project 5
  * Provides a MiniJava test case for the class descriptor pass.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow

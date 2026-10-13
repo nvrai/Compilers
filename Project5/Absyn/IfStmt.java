@@ -1,5 +1,5 @@
 /**
- * COSC 4400 - Project #4
+ * COSC 4400 - Project 5
  * Represents an if statement with an optional else branch.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow

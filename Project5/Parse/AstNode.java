@@ -1,5 +1,5 @@
 /**
- * COSC 4400 - Project #4
+ * COSC 4400 - Project 5
  * Stores one node while reading a textual abstract syntax tree.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow
