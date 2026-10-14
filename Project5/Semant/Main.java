@@ -25,7 +25,7 @@ public final class Main {
             Program program = ReadAbsyn.Goal();
             ErrorReporter errors = new ErrorReporter();
             ClassTable classes = ClassTable.build(program, errors);
-            if (classes.canTypeCheck()) {
+            if (classes.canTypeCheck() && !errors.anyErrors()) {
                 new TypeCheckVisitor(classes, errors).check(program);
             }
             errors.printTo(errorOut);

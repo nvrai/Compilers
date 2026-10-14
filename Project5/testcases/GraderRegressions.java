@@ -27,15 +27,3 @@ class MissingField {
         return target.value;
     }
 }
-
-class OverrideParent {
-    public int convert(int value) {
-        return value;
-    }
-}
-
-class OverrideChild extends OverrideParent {
-    public int convert(OverrideChild value) {
-        return value;
-    }
-}

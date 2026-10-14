@@ -104,8 +104,6 @@ public final class TypeChecker {
     }
 
     private void check(MethodDecl method) {
-        if (classes.isInvalidOverride(method)) return;
-
         FUNCTION function = classes.descriptorFor(method);
         if (function == null) return;
 

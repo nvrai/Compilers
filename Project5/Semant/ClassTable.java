@@ -41,8 +41,6 @@ public final class ClassTable {
             new IdentityHashMap<ClassDecl, CLASS>();
     private final Map<MethodDecl, FUNCTION> functionByDeclaration =
             new IdentityHashMap<MethodDecl, FUNCTION>();
-    private final Set<MethodDecl> invalidOverrides = Collections.newSetFromMap(
-            new IdentityHashMap<MethodDecl, Boolean>());
     private final List<CLASS> programClasses = new ArrayList<CLASS>();
     private final Map<CLASS, State> states = new IdentityHashMap<CLASS, State>();
     private final Set<CLASS> populated = Collections.newSetFromMap(
@@ -95,11 +93,6 @@ public final class ClassTable {
     /** Returns the descriptor associated with a source-level method declaration. */
     public FUNCTION descriptorFor(MethodDecl declaration) {
         return functionByDeclaration.get(declaration);
-    }
-
-    /** True when a method was rejected because its signature cannot override its parent. */
-    public boolean isInvalidOverride(MethodDecl declaration) {
-        return invalidOverrides.contains(declaration);
     }
 
     /** True when class names and inheritance are sound enough for expression checking. */
@@ -261,7 +254,6 @@ public final class ClassTable {
                     && !function.coerceTo(inherited.type)) {
                 errors.report("incompatible method override: " + method.name
                         + " in class " + descriptor.name + ": line not available");
-                invalidOverrides.add(method);
                 descriptorOutputAllowed = false;
             }
 

@@ -62,6 +62,8 @@ test: all
 		${JAVA} Semant.Main 2>&1 | diff -u testcases/TypeErrors.expected -
 	@${JAVA} Parse.Main < testcases/GraderRegressions.java | \
 		${JAVA} Semant.Main 2>&1 | diff -u testcases/GraderRegressions.expected -
+	@${JAVA} Parse.Main < testcases/GraderOverrideCascade.java | \
+		${JAVA} Semant.Main 2>&1 | diff -u testcases/GraderOverrideCascade.expected -
 	@echo "Project 5 type-checker tests passed."
 
 $(PARSEDIR)/$(MJ_PARSER).java: $(PARSEDIR)/$(MJ_GRAMMAR).jj
