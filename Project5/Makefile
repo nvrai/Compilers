@@ -60,6 +60,8 @@ test: all
 		echo "$$result"; exit 1; fi
 	@${JAVA} Parse.Main < testcases/TypeErrors.java | \
 		${JAVA} Semant.Main 2>&1 | diff -u testcases/TypeErrors.expected -
+	@${JAVA} Parse.Main < testcases/GraderRegressions.java | \
+		${JAVA} Semant.Main 2>&1 | diff -u testcases/GraderRegressions.expected -
 	@echo "Project 5 type-checker tests passed."
 
 $(PARSEDIR)/$(MJ_PARSER).java: $(PARSEDIR)/$(MJ_GRAMMAR).jj

@@ -26,7 +26,7 @@ public final class Main {
             ErrorReporter errors = new ErrorReporter();
             ClassTable classes = ClassTable.build(program, errors);
             if (classes.canTypeCheck()) {
-                new TypeChecker(classes, errors).check(program);
+                new TypeCheckVisitor(classes, errors).check(program);
             }
             errors.printTo(errorOut);
             if (!errors.anyErrors()) {

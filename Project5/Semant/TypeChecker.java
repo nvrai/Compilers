@@ -7,8 +7,10 @@
  */
 package Semant;
 
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Set;
 
 import Absyn.AddExpr;
 import Absyn.AndExpr;
@@ -102,6 +104,8 @@ public final class TypeChecker {
     }
 
     private void check(MethodDecl method) {
+        if (classes.isInvalidOverride(method)) return;
+
         FUNCTION function = classes.descriptorFor(method);
         if (function == null) return;
 
@@ -115,13 +119,15 @@ public final class TypeChecker {
             variables.put(formal.name, type);
         }
 
+        Set<String> localNames = new HashSet<String>();
         for (VarDecl local : method.locals) {
             Type type = classes.typeOf(local.type);
-            local.semanticType = type;
-            Type previous = variables.put(local.name, type);
-            if (previous != null) {
-                errors.report(local.name + " is already defined in " + currentMethod);
+            if (!localNames.add(local.name)) {
+                errors.report(local.name + " is already defined in " + currentMethod,
+                        local);
             }
+            local.semanticType = type;
+            variables.put(local.name, type);
             if (local.init != null) require(type, typeOf(local.init), local.init);
         }
 
@@ -199,7 +205,7 @@ public final class TypeChecker {
             if (object == null) return VOID_TYPE;
             FIELD field = classes.lookupField(object.myClass, access.field);
             if (field == null) {
-                errors.report("cannot resolve symbol " + access.field, access);
+                errors.report("cannot resolve field " + access.field, access);
                 return VOID_TYPE;
             }
             access.index = Integer.valueOf(field.index);
