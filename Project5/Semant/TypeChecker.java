@@ -126,8 +126,13 @@ public final class TypeChecker {
             }
             local.semanticType = type;
             variables.put(local.name, type);
-            if (local.init != null) require(type, typeOf(local.init), local.init);
         }
+	//
+	for (VarDecl local : method.locals) {
+		if (local.init != null) {
+			require(local.semanticType, typeOf(local.init), local.init);
+		}
+	}
 
         for (Stmt statement : method.stmts) check(statement);
 
