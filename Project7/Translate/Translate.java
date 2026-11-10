@@ -411,11 +411,11 @@ public class Translate implements Absyn.TreeVisitor {
         Label bodyLabel = new Label();
         return new Nx(new Tree.SEQ(
                 new Tree.SEQ(
+                        new Tree.SEQ(new Tree.LABEL(testLabel),
+                                test.unCx(bodyLabel, doneLabel)),
                         new Tree.SEQ(
-                                new Tree.SEQ(new Tree.LABEL(testLabel),
-                                        test.unCx(bodyLabel, doneLabel)),
-                                new Tree.SEQ(new Tree.LABEL(bodyLabel), body)),
-                        new Tree.JUMP(testLabel)),
+                                new Tree.SEQ(new Tree.LABEL(bodyLabel), body),
+                                new Tree.JUMP(testLabel))),
                 new Tree.LABEL(doneLabel)));
     }
 
