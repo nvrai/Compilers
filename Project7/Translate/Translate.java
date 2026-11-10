@@ -143,18 +143,15 @@ public class Translate implements Absyn.TreeVisitor {
         return externalCall(name, values);
     }
 
-    private Tree.Exp checkedPointer(Tree.Exp expression) {
+    private Tree.Exp checkedMemory(Tree.Exp expression, int offset) {
         Temp pointer = new Temp();
         Label valid = new Label();
-        Label invalid = new Label();
         Tree.Stm check = seq(
                 MOVE(TEMP(pointer), expression),
-                new Tree.CJUMP(Tree.CJUMP.NE, TEMP(pointer), CONST(0), valid, invalid),
-                new Tree.LABEL(invalid),
-                EXP(new Tree.CALL(NAME(frame.badPtr()), new ArrayList<Tree.Exp>())),
-                new Tree.JUMP(valid),
-                new Tree.LABEL(valid));
-        return new Tree.ESEQ(check, TEMP(pointer));
+                new Tree.CJUMP(Tree.CJUMP.EQ, TEMP(pointer), CONST(0),
+                        frame.badPtr(), valid));
+        Tree.Exp value = MEM(BINOP(Tree.BINOP.PLUS, TEMP(pointer), CONST(offset)));
+        return new Tree.ESEQ(check, new Tree.ESEQ(new Tree.LABEL(valid), value));
     }
 
     private Tree.Exp arrayElement(Tree.Exp arrayExpression, Tree.Exp indexExpression) {
@@ -163,28 +160,26 @@ public class Translate implements Absyn.TreeVisitor {
         Label pointerOkay = new Label();
         Label lowerOkay = new Label();
         Label indexOkay = new Label();
-        Label badPointer = new Label();
-        Label badIndex = new Label();
 
-        Tree.Exp length = MEM(BINOP(Tree.BINOP.MINUS, TEMP(array), CONST(frame.wordSize())));
-        Tree.Stm checks = seq(
-                MOVE(TEMP(array), arrayExpression),
-                MOVE(TEMP(index), indexExpression),
-                new Tree.CJUMP(Tree.CJUMP.NE, TEMP(array), CONST(0), pointerOkay, badPointer),
-                new Tree.LABEL(badPointer),
-                EXP(new Tree.CALL(NAME(frame.badPtr()), new ArrayList<Tree.Exp>())),
-                new Tree.JUMP(pointerOkay),
-                new Tree.LABEL(pointerOkay),
-                new Tree.CJUMP(Tree.CJUMP.GE, TEMP(index), CONST(0), lowerOkay, badIndex),
+        Tree.Exp length = MEM(BINOP(Tree.BINOP.PLUS, TEMP(array),
+                CONST(-frame.wordSize())));
+        Tree.Stm checks = new Tree.SEQ(
                 new Tree.LABEL(lowerOkay),
-                new Tree.CJUMP(Tree.CJUMP.LT, TEMP(index), length, indexOkay, badIndex),
-                new Tree.LABEL(badIndex),
-                EXP(new Tree.CALL(NAME(frame.badSub()), new ArrayList<Tree.Exp>())),
-                new Tree.JUMP(indexOkay),
-                new Tree.LABEL(indexOkay));
+                new Tree.CJUMP(Tree.CJUMP.GE, TEMP(index), length,
+                        frame.badSub(), indexOkay));
+        checks = new Tree.SEQ(
+                new Tree.CJUMP(Tree.CJUMP.LT, TEMP(index), CONST(0),
+                        frame.badSub(), lowerOkay), checks);
+        checks = new Tree.SEQ(new Tree.LABEL(pointerOkay), checks);
+        checks = new Tree.SEQ(
+                new Tree.CJUMP(Tree.CJUMP.EQ, TEMP(array), CONST(0),
+                        frame.badPtr(), pointerOkay), checks);
+        checks = new Tree.SEQ(MOVE(TEMP(index), indexExpression), checks);
+        checks = new Tree.SEQ(MOVE(TEMP(array), arrayExpression), checks);
         Tree.Exp address = BINOP(Tree.BINOP.PLUS, TEMP(array),
                 BINOP(Tree.BINOP.MUL, TEMP(index), CONST(frame.wordSize())));
-        return new Tree.ESEQ(checks, MEM(address));
+        return new Tree.ESEQ(checks,
+                new Tree.ESEQ(new Tree.LABEL(indexOkay), MEM(address)));
     }
 
     private List<Tree.Exp> translateArguments(List<Absyn.Expr> arguments) {
@@ -253,20 +248,18 @@ public class Translate implements Absyn.TreeVisitor {
 
     public Exp visit(Absyn.Program program) {
         fragments.clear();
+        strings.clear();
         prepareEnvironments(program);
+        for (Absyn.ClassDecl declaration : program.classes) emitVtable(declaration);
         for (Absyn.ClassDecl declaration : program.classes) declaration.accept(this);
         return new Nx(null);
     }
 
-    public Exp visit(Absyn.ClassDecl declaration) {
-        CLASS previousClass = currentClass;
-        Absyn.ClassDecl previousDeclaration = currentClassDeclaration;
-        currentClass = classEnvironment.get(declaration.name);
-        currentClassDeclaration = declaration;
-
+    private void emitVtable(Absyn.ClassDecl declaration) {
+        CLASS descriptor = classEnvironment.get(declaration.name);
         ArrayList<Label> methodLabels = new ArrayList<Label>();
-        if (currentClass != null) {
-            for (FIELD methodField : currentClass.instance.methods) {
+        if (descriptor != null) {
+            for (FIELD methodField : descriptor.instance.methods) {
                 if (methodField.type instanceof FUNCTION) {
                     methodLabels.add(methodLabel((FUNCTION)methodField.type));
                 }
@@ -274,6 +267,13 @@ public class Translate implements Absyn.TreeVisitor {
         }
         fragments.add(new DataFrag(framePrototype.record(
                 vtableLabel(declaration.name), methodLabels)));
+    }
+
+    public Exp visit(Absyn.ClassDecl declaration) {
+        CLASS previousClass = currentClass;
+        Absyn.ClassDecl previousDeclaration = currentClassDeclaration;
+        currentClass = classEnvironment.get(declaration.name);
+        currentClassDeclaration = declaration;
 
         for (Absyn.MethodDecl method : declaration.methods) method.accept(this);
         currentClass = previousClass;
@@ -385,21 +385,28 @@ public class Translate implements Absyn.TreeVisitor {
     }
 
     public Exp visit(Absyn.IfStmt statement) {
+        Exp test = statement.test.accept(this);
+        Tree.Stm thenBody = statement.thenStm.accept(this).unNx();
+        Tree.Stm elseBody = statement.elseStm == null
+                ? null : statement.elseStm.accept(this).unNx();
         Label thenLabel = new Label();
         Label elseLabel = statement.elseStm == null ? null : new Label();
         Label doneLabel = new Label();
         Label falseLabel = elseLabel == null ? doneLabel : elseLabel;
 
-        Tree.Stm translated = seq(
-                statement.test.accept(this).unCx(thenLabel, falseLabel),
-                new Tree.LABEL(thenLabel),
-                statement.thenStm.accept(this).unNx(),
+        Tree.Stm thenBranch = new Tree.SEQ(
+                new Tree.SEQ(new Tree.LABEL(thenLabel), thenBody),
                 new Tree.JUMP(doneLabel));
+        Tree.Stm branches = thenBranch;
         if (statement.elseStm != null) {
-            translated = seq(translated, new Tree.LABEL(elseLabel),
-                    statement.elseStm.accept(this).unNx(), new Tree.JUMP(doneLabel));
+            Tree.Stm elseBranch = new Tree.SEQ(
+                    new Tree.SEQ(new Tree.LABEL(elseLabel), elseBody),
+                    new Tree.JUMP(doneLabel));
+            branches = new Tree.SEQ(thenBranch, elseBranch);
         }
-        translated = seq(translated, new Tree.LABEL(doneLabel));
+        Tree.Stm translated = new Tree.SEQ(
+                new Tree.SEQ(test.unCx(thenLabel, falseLabel), branches),
+                new Tree.LABEL(doneLabel));
         return new Nx(translated);
     }
 
@@ -407,13 +414,13 @@ public class Translate implements Absyn.TreeVisitor {
         Label testLabel = new Label();
         Label bodyLabel = new Label();
         Label doneLabel = new Label();
-        return new Nx(seq(
+        return new Nx(new Tree.SEQ(
                 new Tree.LABEL(testLabel),
-                statement.test.accept(this).unCx(bodyLabel, doneLabel),
-                new Tree.LABEL(bodyLabel),
-                statement.body.accept(this).unNx(),
-                new Tree.JUMP(testLabel),
-                new Tree.LABEL(doneLabel)));
+                new Tree.SEQ(statement.test.accept(this).unCx(bodyLabel, doneLabel),
+                        new Tree.SEQ(new Tree.LABEL(bodyLabel),
+                                new Tree.SEQ(statement.body.accept(this).unNx(),
+                                        new Tree.SEQ(new Tree.JUMP(testLabel),
+                                                new Tree.LABEL(doneLabel)))))));
     }
 
     private Exp arithmetic(int operator, Absyn.BinOpExpr expression) {
@@ -443,11 +450,13 @@ public class Translate implements Absyn.TreeVisitor {
     }
 
     public Exp visit(Absyn.AndExpr expression) {
+        if (expression.e2 instanceof Absyn.TrueExpr) return expression.e1.accept(this);
         return new IfThenElseExp(expression.e1.accept(this),
                 expression.e2.accept(this), new Ex(CONST(0)));
     }
 
     public Exp visit(Absyn.OrExpr expression) {
+        if (expression.e2 instanceof Absyn.FalseExpr) return expression.e1.accept(this);
         return new IfThenElseExp(expression.e1.accept(this), new Ex(CONST(1)),
                 expression.e2.accept(this));
     }
@@ -478,55 +487,15 @@ public class Translate implements Absyn.TreeVisitor {
                 new Ex(CONST(0)), new Ex(CONST(1)));
     }
 
-    private Tree.Exp allocateArray(List<Temp> dimensions, int depth) {
-        Temp array = new Temp();
-        Temp length = dimensions.get(depth);
-        Tree.Stm statements = MOVE(TEMP(array),
-                externalCall("new", TEMP(length), TEMP(length)));
-
-        if (depth + 1 < dimensions.size() && dimensions.get(depth + 1) != null) {
-            Temp index = new Temp();
-            Label test = new Label();
-            Label body = new Label();
-            Label done = new Label();
-            Tree.Exp element = MEM(BINOP(Tree.BINOP.PLUS, TEMP(array),
-                    BINOP(Tree.BINOP.MUL, TEMP(index), CONST(frame.wordSize()))));
-            statements = seq(statements,
-                    MOVE(TEMP(index), CONST(0)),
-                    new Tree.LABEL(test),
-                    new Tree.CJUMP(Tree.CJUMP.LT, TEMP(index), TEMP(length), body, done),
-                    new Tree.LABEL(body),
-                    MOVE(element, allocateArray(dimensions, depth + 1)),
-                    MOVE(TEMP(index), BINOP(Tree.BINOP.PLUS, TEMP(index), CONST(1))),
-                    new Tree.JUMP(test),
-                    new Tree.LABEL(done));
-        }
-        return new Tree.ESEQ(statements, TEMP(array));
-    }
-
     public Exp visit(Absyn.NewArrayExpr expression) {
-        ArrayList<Temp> dimensions = new ArrayList<Temp>();
-        Tree.Stm evaluateDimensions = null;
-        for (Absyn.Expr dimension : expression.dimensions) {
-            if (dimension == null) {
-                dimensions.add(null);
-                continue;
-            }
-            Temp length = new Temp();
-            Label okay = new Label();
-            Label invalid = new Label();
-            dimensions.add(length);
-            evaluateDimensions = seq(evaluateDimensions,
-                    MOVE(TEMP(length), dimension.accept(this).unEx()),
-                    new Tree.CJUMP(Tree.CJUMP.GE, TEMP(length), CONST(0), okay, invalid),
-                    new Tree.LABEL(invalid),
-                    EXP(new Tree.CALL(NAME(frame.badSub()), new ArrayList<Tree.Exp>())),
-                    MOVE(TEMP(length), CONST(0)),
-                    new Tree.JUMP(okay),
-                    new Tree.LABEL(okay));
+        if (expression.dimensions.isEmpty() || expression.dimensions.getFirst() == null) {
+            return new Ex(CONST(0));
         }
-        if (dimensions.isEmpty() || dimensions.get(0) == null) return new Ex(CONST(0));
-        return new Ex(new Tree.ESEQ(evaluateDimensions, allocateArray(dimensions, 0)));
+        Temp length = new Temp();
+        Tree.Stm evaluateLength = MOVE(TEMP(length),
+                expression.dimensions.getFirst().accept(this).unEx());
+        return new Ex(new Tree.ESEQ(evaluateLength,
+                externalCall("new", TEMP(length), TEMP(length))));
     }
 
     public Exp visit(Absyn.XinuCallStmt statement) {
@@ -542,25 +511,23 @@ public class Translate implements Absyn.TreeVisitor {
     public Exp visit(Absyn.CallExpr expression) {
         Temp receiver = new Temp();
         Label valid = new Label();
-        Label invalid = new Label();
         Tree.Stm check = seq(
                 MOVE(TEMP(receiver), expression.target.accept(this).unEx()),
-                new Tree.CJUMP(Tree.CJUMP.NE, TEMP(receiver), CONST(0), valid, invalid),
-                new Tree.LABEL(invalid),
-                EXP(new Tree.CALL(NAME(frame.badPtr()), new ArrayList<Tree.Exp>())),
-                new Tree.JUMP(valid),
-                new Tree.LABEL(valid));
+                new Tree.CJUMP(Tree.CJUMP.EQ, TEMP(receiver), CONST(0),
+                        frame.badPtr(), valid));
 
         ArrayList<Tree.Exp> arguments = new ArrayList<Tree.Exp>();
         arguments.add(TEMP(receiver));
         arguments.addAll(translateArguments(expression.args));
 
         int index = expression.index == null ? 0 : expression.index.intValue();
-        Tree.Exp vtable = MEM(BINOP(Tree.BINOP.MINUS, TEMP(receiver),
-                CONST(frame.wordSize())));
+        Tree.Exp vtable = MEM(BINOP(Tree.BINOP.PLUS, TEMP(receiver),
+                CONST(-frame.wordSize())));
         Tree.Exp function = MEM(BINOP(Tree.BINOP.PLUS, vtable,
                 CONST(index * frame.wordSize())));
-        return new Ex(new Tree.ESEQ(check, new Tree.CALL(function, arguments)));
+        return new Ex(new Tree.ESEQ(check,
+                new Tree.ESEQ(new Tree.LABEL(valid),
+                        new Tree.CALL(function, arguments))));
     }
 
     public Exp visit(Absyn.FalseExpr expression) {
@@ -575,51 +542,13 @@ public class Translate implements Absyn.TreeVisitor {
         return new Ex(CONST(0));
     }
 
-    private List<Absyn.ClassDecl> initializationOrder(CLASS descriptor) {
-        LinkedList<Absyn.ClassDecl> declarations = new LinkedList<Absyn.ClassDecl>();
-        for (CLASS current = descriptor; current != null; current = current.parent) {
-            Absyn.ClassDecl declaration = classDeclarations.get(current.name);
-            if (declaration != null) declarations.addFirst(declaration);
-        }
-        return declarations;
-    }
-
     public Exp visit(Absyn.NewObjectExpr expression) {
         if (!(expression.type instanceof Absyn.IdentifierType)) return new Ex(CONST(0));
         String className = ((Absyn.IdentifierType)expression.type).id;
         CLASS descriptor = classEnvironment.get(className);
         if (descriptor == null) return new Ex(CONST(0));
-
-        Temp object = new Temp();
-        Tree.Stm statements = MOVE(TEMP(object), externalCall("new",
-                CONST(descriptor.instance.fields.size()), NAME(vtableLabel(className))));
-
-        CLASS savedClass = currentClass;
-        Absyn.ClassDecl savedDeclaration = currentClassDeclaration;
-        Table<Frame.Access> savedVariables = variableEnvironment;
-        Tree.Exp savedOverride = thisOverride;
-        thisOverride = TEMP(object);
-        variableEnvironment = new Table<Frame.Access>();
-
-        for (Absyn.ClassDecl declaration : initializationOrder(descriptor)) {
-            currentClassDeclaration = declaration;
-            currentClass = classEnvironment.get(declaration.name);
-            for (Absyn.VarDecl field : declaration.fields) {
-                if (field.init == null) continue;
-                FIELD fieldDescriptor = descriptor.instance.fields.get(field.name);
-                if (fieldDescriptor == null) continue;
-                Tree.Exp location = MEM(BINOP(Tree.BINOP.PLUS, TEMP(object),
-                        CONST(fieldDescriptor.index * frame.wordSize())));
-                statements = seq(statements,
-                        MOVE(location, field.init.accept(this).unEx()));
-            }
-        }
-
-        currentClass = savedClass;
-        currentClassDeclaration = savedDeclaration;
-        variableEnvironment = savedVariables;
-        thisOverride = savedOverride;
-        return new Ex(new Tree.ESEQ(statements, TEMP(object)));
+        return new Ex(externalCall("new", CONST(descriptor.instance.fields.size()),
+                NAME(vtableLabel(className))));
     }
 
     public Exp visit(Absyn.StringLiteral expression) {
@@ -653,14 +582,13 @@ public class Translate implements Absyn.TreeVisitor {
     }
 
     public Exp visit(Absyn.FieldExpr expression) {
-        Tree.Exp target = checkedPointer(expression.target.accept(this).unEx());
         int index = expression.index == null ? 0 : expression.index.intValue();
         if (index < 0 && "length".equals(expression.field)) {
-            return new Ex(MEM(BINOP(Tree.BINOP.MINUS, target,
-                    CONST(frame.wordSize()))));
+            return new Ex(checkedMemory(expression.target.accept(this).unEx(),
+                    -frame.wordSize()));
         }
-        return new Ex(MEM(BINOP(Tree.BINOP.PLUS, target,
-                CONST(index * frame.wordSize()))));
+        return new Ex(checkedMemory(expression.target.accept(this).unEx(),
+                index * frame.wordSize()));
     }
 
     public int getindex(String variableName) {
@@ -672,8 +600,7 @@ public class Translate implements Absyn.TreeVisitor {
     public Exp visitThis(String variableName) {
         int index = getindex(variableName);
         if (index < 0) throw new IllegalArgumentException("Unknown field " + variableName);
-        return new Ex(MEM(BINOP(Tree.BINOP.PLUS, checkedPointer(currentThis()),
-                CONST(index * frame.wordSize()))));
+        return new Ex(checkedMemory(currentThis(), index * frame.wordSize()));
     }
 
     public Exp visit(Absyn.IdentifierExpr expression) {
