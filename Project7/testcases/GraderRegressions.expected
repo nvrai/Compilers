@@ -1,0 +1,10 @@
+ERROR value is already defined in test: 
+          VarDecl(IntegerType value null)
+ERROR cannot resolve field value: 
+          FieldExpr(
+           IdentifierExpr(target)
+           value)
+ERROR incompatible types: int required, but void found: 
+          FieldExpr(
+           IdentifierExpr(target)
+           value)
