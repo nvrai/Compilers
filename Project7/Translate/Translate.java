@@ -511,10 +511,12 @@ public class Translate implements Absyn.TreeVisitor {
     public Exp visit(Absyn.CallExpr expression) {
         Temp receiver = new Temp();
         Label valid = new Label();
-        Tree.Stm check = seq(
+        Tree.Stm check = new Tree.SEQ(
                 MOVE(TEMP(receiver), expression.target.accept(this).unEx()),
-                new Tree.CJUMP(Tree.CJUMP.EQ, TEMP(receiver), CONST(0),
-                        frame.badPtr(), valid));
+                new Tree.SEQ(
+                        new Tree.CJUMP(Tree.CJUMP.EQ, TEMP(receiver), CONST(0),
+                                frame.badPtr(), valid),
+                        new Tree.LABEL(valid)));
 
         ArrayList<Tree.Exp> arguments = new ArrayList<Tree.Exp>();
         arguments.add(TEMP(receiver));
@@ -525,9 +527,7 @@ public class Translate implements Absyn.TreeVisitor {
                 CONST(-frame.wordSize())));
         Tree.Exp function = MEM(BINOP(Tree.BINOP.PLUS, vtable,
                 CONST(index * frame.wordSize())));
-        return new Ex(new Tree.ESEQ(check,
-                new Tree.ESEQ(new Tree.LABEL(valid),
-                        new Tree.CALL(function, arguments))));
+        return new Ex(new Tree.ESEQ(check, new Tree.CALL(function, arguments)));
     }
 
     public Exp visit(Absyn.FalseExpr expression) {
