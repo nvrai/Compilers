@@ -111,7 +111,7 @@ public class Translate implements Absyn.TreeVisitor {
         Symbol key = methodKey(owner, method);
         Label label = methodEnvironment.get(key);
         if (label == null) {
-            label = new Label(owner + "$" + method);
+            label = new Label(owner + "__" + method);
             methodEnvironment.put(key, label);
         }
         return label;
@@ -127,7 +127,7 @@ public class Translate implements Absyn.TreeVisitor {
     private Label vtableLabel(String className) {
         Label label = vtableEnvironment.get(className);
         if (label == null) {
-            label = new Label(className + "$vtable");
+            label = new Label(className + "__vtable");
             vtableEnvironment.put(className, label);
         }
         return label;
@@ -245,13 +245,7 @@ public class Translate implements Absyn.TreeVisitor {
         for (Absyn.ClassDecl declaration : program.classes) {
             vtableLabel(declaration.name);
             for (Absyn.MethodDecl method : declaration.methods) {
-                Label label;
-                if (method.returnType == null && "main".equals(method.name)
-                        && !(method instanceof Absyn.VoidDecl)) {
-                    label = new Label("main");
-                } else {
-                    label = new Label(declaration.name + "$" + method.name);
-                }
+                Label label = new Label(declaration.name + "__" + method.name);
                 methodEnvironment.put(methodKey(declaration.name, method.name), label);
             }
         }
@@ -302,16 +296,16 @@ public class Translate implements Absyn.TreeVisitor {
         Frame.Access previousThis = thisAccess;
         Tree.Exp previousOverride = thisOverride;
 
-        Label label = methodLabel(currentClassDeclaration.name, method.name);
+        Label label = isStaticMain(method)
+                ? new Label("main")
+                : methodLabel(currentClassDeclaration.name, method.name);
         frame = framePrototype.newFrame(Symbol.get(label.toString()));
         variableEnvironment = new Table<Frame.Access>();
         thisAccess = null;
         thisOverride = null;
 
-        if (!isStaticMain(method)) {
-            thisAccess = frame.allocFormal();
-            variableEnvironment.put("this", thisAccess);
-        }
+        thisAccess = frame.allocFormal();
+        variableEnvironment.put("this", thisAccess);
         for (Absyn.Formal formal : method.params) formal.accept(this);
 
         LinkedList<Tree.Stm> statements = new LinkedList<Tree.Stm>();
