@@ -1,5 +1,5 @@
 /**
- * COSC 4400 - Project 5
+ * COSC 4400 - Project #7
  * Converts the textual AST representation into Absyn objects.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow
@@ -80,7 +80,7 @@ public final class AstConverter {
 
     private static ThreadDecl threadDecl(AstNode node) {
         require(node, "ThreadDecl");
-        int listIndex = node.items.size() == 4 ? 2 : 1;
+        int listIndex = node.items.size() >= 4 ? 2 : 1;
         return new ThreadDecl(atom(node, 0), varList(child(node, listIndex)),
                 methodList(child(node, listIndex + 1)));
     }

@@ -1,5 +1,5 @@
 /**
- * COSC 4400 - Project 5
+ * COSC 4400 - Project #7
  * Type checks MiniJava statements and expressions using scoped local and class environments.
  * @authors Nick Raimondi and Payton Canegan
  * Instructor Dr Brylow
@@ -347,6 +347,14 @@ public final class TypeChecker {
             result = VOID_TYPE;
         } else if ("readint".equals(method)) {
             result = INT_TYPE;
+        } else if ("threadCreate".equals(method)) {
+            formals.put(classes.get("Thread").instance, "thread");
+            result = INT_TYPE;
+        } else if ("yield".equals(method)) {
+            result = VOID_TYPE;
+        } else if ("sleep".equals(method)) {
+            formals.put(INT_TYPE, "milliseconds");
+            result = VOID_TYPE;
         } else {
             checkExpressions(arguments);
             errors.report("cannot resolve method " + method, context);

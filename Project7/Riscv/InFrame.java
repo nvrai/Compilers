@@ -1,3 +1,10 @@
+/**
+ * COSC 4400 - Project #7
+ * Represents a variable stored at an offset in a RISC-V stack frame.
+ * @authors Nick Raimondi and Payton Canegan
+ * Instructor Dr Brylow
+ * TA-BOT:MAILTO nicolas.raimondi@marquette.edu payton.canegan@marquette.edu
+ */
 package Riscv;
 
 /**
@@ -22,7 +29,6 @@ public class InFrame extends Frame.Access {
     }
 
     public String toString() {
-	Integer offset = new Integer(this.offset);
-	return offset.toString();
+	return Integer.toString(offset);
     }
 }

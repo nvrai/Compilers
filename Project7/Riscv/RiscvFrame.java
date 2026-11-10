@@ -1,3 +1,10 @@
+/**
+ * COSC 4400 - Project #7
+ * Implements stack frames and calling conventions for the RISC-V target.
+ * @authors Nick Raimondi and Payton Canegan
+ * Instructor Dr Brylow
+ * TA-BOT:MAILTO nicolas.raimondi@marquette.edu payton.canegan@marquette.edu
+ */
 /*
  * Copyright 2024 - Marquette University
  */
@@ -343,6 +350,27 @@ public class RiscvFrame extends Frame.Frame
     }
 
     public void procEntryExit1(List<Tree.Stm> body)
+    {
+        LinkedList<Tree.Stm> viewShift = new LinkedList<Tree.Stm>();
+        Iterator<Frame.Access> formal = formals.iterator();
+        Iterator<Frame.Access> actual = actuals.iterator();
+        while (formal.hasNext() && actual.hasNext())
+        {
+            Frame.Access destination = formal.next();
+            Frame.Access source = actual.next();
+            if (destination != source)
+            {
+                viewShift.add(MOVE(destination.exp(this), source.exp(this)));
+            }
+        }
+        body.addAll(0, viewShift);
+    }
+
+    public void procEntryExit2(List<Assem.Instr> body)
+    {
+    }
+
+    public void procEntryExit3(List<Assem.Instr> body)
     {
     }
 }

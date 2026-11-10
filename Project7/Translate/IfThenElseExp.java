@@ -1,61 +1,71 @@
+/**
+ * COSC 4400 - Project #7
+ * Converts conditional expressions into value, statement, or branch IR forms.
+ * @authors Nick Raimondi and Payton Canegan
+ * Instructor Dr Brylow
+ * TA-BOT:MAILTO nicolas.raimondi@marquette.edu payton.canegan@marquette.edu
+ */
 /* Copyright (C) 1997-2003, Purdue Research Foundation of Purdue University.
  * All rights reserved.  */
 package Translate;
-import Temp.Temp;
+
 import Temp.Label;
+import Temp.Temp;
 
-/**
- * Represents an If-Then-Else Expression, a special case that can be 
- * an expression or statement depending on it's use.
- */
-
+/** Represents a conditional that can be used as an expression or statement. */
 public class IfThenElseExp extends Exp {
-    Exp cond, trueExp, falseExp;
+    private final Exp condition;
+    private final Exp trueExpression;
+    private final Exp falseExpression;
 
-    IfThenElseExp(Exp cExp, Exp tExp, Exp fExp) {
-	cond = cExp; 
-	trueExp = tExp; 
-	falseExp = fExp;
+    IfThenElseExp(Exp condition, Exp trueExpression, Exp falseExpression) {
+        this.condition = condition;
+        this.trueExpression = trueExpression;
+        this.falseExpression = falseExpression;
     }
 
-    Tree.Stm unCx(Label tt, Label ff) {
-	Label t, f;
-	// TODO: Check for optimizations
-        Tree.Stm condStm = cond.unCx(t, f);
-	return SEQ(condStm,
-		   SEQ(SEQ(LABEL(t), tStm),
-		       SEQ(LABEL(f), fStm)));
+    private static Tree.Stm seq(Tree.Stm left, Tree.Stm right) {
+        if (left == null) return right;
+        if (right == null) return left;
+        return new Tree.SEQ(left, right);
+    }
+
+    Tree.Stm unCx(Label trueLabel, Label falseLabel) {
+        Label thenLabel = new Label();
+        Label elseLabel = new Label();
+        return seq(condition.unCx(thenLabel, elseLabel),
+                seq(new Tree.LABEL(thenLabel),
+                seq(trueExpression.unCx(trueLabel, falseLabel),
+                seq(new Tree.LABEL(elseLabel),
+                        falseExpression.unCx(trueLabel, falseLabel)))));
     }
 
     Tree.Exp unEx() {
-	// TODO: Check for optimizations
-        Tree.Exp tExp = trueExp.unEx();
-	Tree.Exp fExp = falseExp.unEx();
-	Temp r = new Temp();
-	Label t = new Label();
-	Label f = new Label();
-	Label join = new Label();
-	return ESEQ(SEQ(SEQ(cond.unCx(t, f),
-			    SEQ(SEQ(LABEL(t),
-				    SEQ(MOVE(TEMP(r), tExp),
-					JUMP(join))),
-				SEQ(LABEL(f),
-				    SEQ(MOVE(TEMP(r), fExp),
-					JUMP(join))))),
-			LABEL(join)),
-		    TEMP(r));
+        Temp result = new Temp();
+        Label thenLabel = new Label();
+        Label elseLabel = new Label();
+        Label joinLabel = new Label();
+
+        Tree.Stm statements = seq(condition.unCx(thenLabel, elseLabel),
+                seq(new Tree.LABEL(thenLabel),
+                seq(new Tree.MOVE(new Tree.TEMP(result), trueExpression.unEx()),
+                seq(new Tree.JUMP(joinLabel),
+                seq(new Tree.LABEL(elseLabel),
+                seq(new Tree.MOVE(new Tree.TEMP(result), falseExpression.unEx()),
+                seq(new Tree.JUMP(joinLabel), new Tree.LABEL(joinLabel))))))));
+        return new Tree.ESEQ(statements, new Tree.TEMP(result));
     }
 
     Tree.Stm unNx() {
-	// TODO: Check for optimizations
-        Tree.Stm tStm = trueExp.unNx();
-        Tree.Stm fStm = falseExp.unNx();
-	Label t, f, join;
-	t = new Label();
-	f = new Label();
-	join = new Label();
-	tStm = SEQ(SEQ(LABEL(t), tStm), JUMP(join));
-	fStm = SEQ(SEQ(LABEL(f), fStm), JUMP(join));
-	return SEQ(SEQ(cond.unCx(t, f), SEQ(tStm, fStm)), LABEL(join));
+        Label thenLabel = new Label();
+        Label elseLabel = new Label();
+        Label joinLabel = new Label();
+        return seq(condition.unCx(thenLabel, elseLabel),
+                seq(new Tree.LABEL(thenLabel),
+                seq(trueExpression.unNx(),
+                seq(new Tree.JUMP(joinLabel),
+                seq(new Tree.LABEL(elseLabel),
+                seq(falseExpression.unNx(),
+                seq(new Tree.JUMP(joinLabel), new Tree.LABEL(joinLabel))))))));
     }
 }

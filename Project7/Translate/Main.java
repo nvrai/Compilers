@@ -1,67 +1,56 @@
-/* Copyright (C) 1997-2003, Purdue Research Foundation of Purdue University.
- * All rights reserved.  */
-
+/**
+ * COSC 4400 - Project #7
+ * Reads a checked MiniJava AST, translates it to IR, and prints its fragments.
+ * @authors Nick Raimondi and Payton Canegan
+ * Instructor Dr Brylow
+ * TA-BOT:MAILTO nicolas.raimondi@marquette.edu payton.canegan@marquette.edu
+ */
 package Translate;
+
+import java.io.BufferedInputStream;
 import java.io.PrintWriter;
-import java.util.Iterator;
 
-//import Semant.*;
 import Absyn.Program;
-import Parse.*;
+import Parse.ParseException;
+import Parse.ReadTypes;
+import Riscv.RiscvFrame;
 
-import java.util.HashMap; 
-import java.util.List;
-import java.util.LinkedList;
-
-//import Translate.Translate;
-
-public class Main 
-{
-    public static void main(String args[])
-    {
-	InputStreamReader isr =	new InputStreamReader(System.in);
-        java.io.Reader reader = new BufferedReader(isr);
-
-	Absyn.Program parse = null;
-	try
-	{
-	    parse = new Parse.ReadTypes(reader).Program();
-	}
-	catch (ParseException p)
-	{
-	    System.err.println(p.toString());
-	    System.exit(-1);
-	}
-		
-	Translate translate = new Translate(new Arm.ArmFrame());
-	parse.accept(translate);
-		
-	PrintWriter writer = new PrintWriter(System.out);
-		
-	for (Iterator frags = translate.results().iterator(); 
-	     frags.hasNext(); ) 
-	{
-	    Frag f = (Frag)frags.next();
-	    if (f instanceof DataFrag) 
-	    {
-		writer.println("DataFrag(");
-		writer.println(f);
-		writer.println(")");
-	    } 
-	    else 
-	    {
-		writer.println("ProcFrag(");
-		ProcFrag p = (ProcFrag)f;
-		p.frame.printFrame(writer);
-		if (p.body != null) 
-		{
-		    new Tree.Print(writer, p.body);
-		    writer.println();
-		}
-		writer.println(")");
-	    }
-	}  
-	writer.flush();
+/** Command-line entry point for the translation phase. */
+public final class Main {
+    private Main() {
     }
-}	
 
+    public static void main(String[] arguments) {
+        Program program;
+        try {
+            new ReadTypes(new BufferedInputStream(System.in));
+            program = ReadTypes.Goal();
+        } catch (ParseException error) {
+            System.err.println(error.toString());
+            System.exit(1);
+            return;
+        }
+
+        Translate translator = new Translate(new RiscvFrame());
+        program.accept(translator);
+
+        PrintWriter writer = new PrintWriter(System.out);
+        for (Frag fragment : translator.results()) {
+            if (fragment instanceof DataFrag) {
+                writer.println("DataFrag(");
+                writer.println(fragment);
+                writer.println(")");
+            } else {
+                ProcFrag procedure = (ProcFrag)fragment;
+                writer.println("ProcFrag(");
+                procedure.frame.printFrame(writer);
+                if (procedure.body != null) {
+                    new Tree.Print(writer, procedure.body);
+                    writer.println();
+                }
+                writer.println(")");
+            }
+        }
+        writer.flush();
+    }
+}

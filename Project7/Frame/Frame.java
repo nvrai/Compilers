@@ -1,3 +1,10 @@
+/**
+ * COSC 4400 - Project #7
+ * Defines the target-independent stack-frame interface used during translation.
+ * @authors Nick Raimondi and Payton Canegan
+ * Instructor Dr Brylow
+ * TA-BOT:MAILTO nicolas.raimondi@marquette.edu payton.canegan@marquette.edu
+ */
 /* Copyright (C) 1997-2003, Purdue Research Foundation of Purdue University.
  * All rights reserved.  */
 package Frame;
@@ -15,6 +22,8 @@ public abstract class Frame
   public Temp.Label name;
   /* Formals - This will contain a list of Access*/	
   public List<Access> formals;	
+  /* Incoming locations used to pass each formal parameter. */
+  public List<Access> actuals;
 
   public abstract Frame newFrame(Symbol.Symbol name);
   public abstract Access allocFormal();
@@ -23,6 +32,7 @@ public abstract class Frame
   public abstract int wordSize();
   /* Function Symbol & Args list */
   public abstract Temp.Temp RV();
+  public abstract Tree.Exp externalCall(Symbol.Symbol name, List<Tree.Exp> args);
 
 	
   public abstract String string(Temp.Label label, String value);
