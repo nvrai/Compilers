@@ -30,7 +30,29 @@ public class IfThenElseExp extends Exp {
         return new Tree.SEQ(left, right);
     }
 
+    private static Integer constant(Exp expression) {
+        if (!(expression instanceof Ex)) return null;
+        Tree.Exp tree = ((Ex)expression).exp;
+        if (!(tree instanceof Tree.CONST)) return null;
+        return Integer.valueOf(((Tree.CONST)tree).value);
+    }
+
     Tree.Stm unCx(Label trueLabel, Label falseLabel) {
+        Integer trueConstant = constant(trueExpression);
+        Integer falseConstant = constant(falseExpression);
+        if (falseConstant != null && falseConstant.intValue() == 0) {
+            Label evaluateRight = new Label();
+            return seq(condition.unCx(evaluateRight, falseLabel),
+                    seq(new Tree.LABEL(evaluateRight),
+                            trueExpression.unCx(trueLabel, falseLabel)));
+        }
+        if (trueConstant != null && trueConstant.intValue() != 0) {
+            Label evaluateRight = new Label();
+            return seq(condition.unCx(trueLabel, evaluateRight),
+                    seq(new Tree.LABEL(evaluateRight),
+                            falseExpression.unCx(trueLabel, falseLabel)));
+        }
+
         Label thenLabel = new Label();
         Label elseLabel = new Label();
         return seq(condition.unCx(thenLabel, elseLabel),

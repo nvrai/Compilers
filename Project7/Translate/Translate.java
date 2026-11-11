@@ -343,7 +343,7 @@ public class Translate implements Absyn.TreeVisitor {
     public Exp visit(Absyn.VarDecl variable) {
         Frame.Access access = frame.allocLocal();
         variableEnvironment.put(variable.name, access);
-        if (variable.init == null) return new Nx(null);
+        if (variable.init == null) return new Nx(MOVE(access.exp(frame), CONST(0)));
         return new Nx(MOVE(access.exp(frame), variable.init.accept(this).unEx()));
     }
 
@@ -479,8 +479,7 @@ public class Translate implements Absyn.TreeVisitor {
     }
 
     public Exp visit(Absyn.NotExpr expression) {
-        return new Ex(BINOP(Tree.BINOP.BITXOR,
-                expression.e1.accept(this).unEx(), CONST(1)));
+        return new NotExp(expression.e1.accept(this));
     }
 
     public Exp visit(Absyn.NewArrayExpr expression) {
