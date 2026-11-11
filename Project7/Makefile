@@ -22,8 +22,7 @@ all: $(CLASSES)
 test: all
 	@set -e; \
 	for test in Hello Precedence ValidDescriptors ValidTypeCheck TranslatorFeatures; do \
-		$(JAVA) Parse.Main < testcases/$$test.java | \
-			$(JAVA) Semant.Main | $(JAVA) Translate.Main > /dev/null; \
+		$(JAVA) Translate.Main < testcases/$$test.java > /dev/null; \
 		echo "PASS testcases/$$test.java"; \
 	done
 
