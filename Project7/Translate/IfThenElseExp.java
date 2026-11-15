@@ -86,15 +86,20 @@ public class IfThenElseExp extends Exp {
     }
 
     Tree.Stm unNx() {
+        Tree.Stm thenBody = trueExpression.unNx();
+        Tree.Stm elseBody = falseExpression.unNx();
         Label thenLabel = new Label();
         Label elseLabel = new Label();
         Label joinLabel = new Label();
-        return seq(condition.unCx(thenLabel, elseLabel),
-                seq(new Tree.LABEL(thenLabel),
-                seq(trueExpression.unNx(),
-                seq(new Tree.JUMP(joinLabel),
-                seq(new Tree.LABEL(elseLabel),
-                seq(falseExpression.unNx(),
-                seq(new Tree.JUMP(joinLabel), new Tree.LABEL(joinLabel))))))));
+        Tree.Stm thenBranch = new Tree.SEQ(
+                new Tree.SEQ(new Tree.LABEL(thenLabel), thenBody),
+                new Tree.JUMP(joinLabel));
+        Tree.Stm elseBranch = new Tree.SEQ(
+                new Tree.SEQ(new Tree.LABEL(elseLabel), elseBody),
+                new Tree.JUMP(joinLabel));
+        return new Tree.SEQ(
+                new Tree.SEQ(condition.unCx(thenLabel, elseLabel),
+                        new Tree.SEQ(thenBranch, elseBranch)),
+                new Tree.LABEL(joinLabel));
     }
 }

@@ -379,26 +379,21 @@ public class Translate implements Absyn.TreeVisitor {
 
     public Exp visit(Absyn.IfStmt statement) {
         Exp test = statement.test.accept(this);
-        Tree.Stm thenBody = statement.thenStm.accept(this).unNx();
-        Tree.Stm elseBody = statement.elseStm == null
-                ? null : statement.elseStm.accept(this).unNx();
+        Exp thenExpression = statement.thenStm.accept(this);
+        if (statement.elseStm != null) {
+            return new IfThenElseExp(test, thenExpression,
+                    statement.elseStm.accept(this));
+        }
+
+        Tree.Stm thenBody = thenExpression.unNx();
         Label thenLabel = new Label();
-        Label elseLabel = statement.elseStm == null ? null : new Label();
         Label doneLabel = new Label();
-        Label falseLabel = elseLabel == null ? doneLabel : elseLabel;
 
         Tree.Stm thenBranch = new Tree.SEQ(
                 new Tree.SEQ(new Tree.LABEL(thenLabel), thenBody),
                 new Tree.JUMP(doneLabel));
-        Tree.Stm branches = thenBranch;
-        if (statement.elseStm != null) {
-            Tree.Stm elseBranch = new Tree.SEQ(
-                    new Tree.SEQ(new Tree.LABEL(elseLabel), elseBody),
-                    new Tree.JUMP(doneLabel));
-            branches = new Tree.SEQ(thenBranch, elseBranch);
-        }
         Tree.Stm translated = new Tree.SEQ(
-                new Tree.SEQ(test.unCx(thenLabel, falseLabel), branches),
+                new Tree.SEQ(test.unCx(thenLabel, doneLabel), thenBranch),
                 new Tree.LABEL(doneLabel));
         return new Nx(translated);
     }
