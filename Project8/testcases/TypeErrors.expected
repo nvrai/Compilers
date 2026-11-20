@@ -1,0 +1,64 @@
+ERROR incompatible types: int required, but boolean found: 
+          TrueExpr
+ERROR incompatible types: boolean required, but int found: 
+          IntegerLiteral(1)
+ERROR incompatible types: int required, but boolean found: 
+          NewArrayExpr(IntegerType
+           AbstractList(
+            FalseExpr))
+ERROR operator + cannot be applied to boolean, int: 
+          AddExpr(
+           IdentifierExpr(flag)
+           IntegerLiteral(1))
+ERROR cannot resolve symbol missing: 
+          IdentifierExpr(missing)
+ERROR incompatible types: void required, but int found: 
+          AssignStmt(
+           IdentifierExpr(missing)
+           IdentifierExpr(number))
+ERROR incompatible types: boolean required, but int found: 
+          IfStmt(
+           IdentifierExpr(number)
+           AssignStmt(
+            IdentifierExpr(number)
+            IntegerLiteral(1))
+           null)
+ERROR incompatible types: array required, but int found: 
+          ArrayExpr(
+           IdentifierExpr(number)
+           IntegerLiteral(0))
+ERROR incompatible types: int required, but void found: 
+          AssignStmt(
+           IdentifierExpr(number)
+           ArrayExpr(
+            IdentifierExpr(number)
+            IntegerLiteral(0)))
+ERROR target not object, type int: 
+          FieldExpr(
+           IdentifierExpr(number)
+           value)
+ERROR incompatible types: int required, but void found: 
+          AssignStmt(
+           IdentifierExpr(number)
+           FieldExpr(
+            IdentifierExpr(number)
+            value))
+ERROR mismatch in number of arguments: 
+          CallExpr(
+           IdentifierExpr(sample)
+           identity
+           AbstractList())
+ERROR incompatible types: int required, but boolean found: 
+          IdentifierExpr(flag)
+ERROR operator == cannot be applied to int[], int: 
+          EqualExpr(
+           IdentifierExpr(values)
+           IdentifierExpr(number))
+ERROR cannot resolve method unknown: 
+          XinuCallStmt(unknown
+           AbstractList(
+            IdentifierExpr(number)))
+ERROR incompatible types: boolean required, but int found: 
+          IdentifierExpr(value)
+ERROR incompatible types: int required, but boolean found: 
+          IdentifierExpr(result)

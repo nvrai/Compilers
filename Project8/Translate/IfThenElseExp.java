@@ -1,0 +1,105 @@
+/**
+ * COSC 4400 - Project #8
+ * Converts conditional expressions into value, statement, or branch IR forms.
+ * @authors Nick Raimondi and Payton Canegan
+ * Instructor Dr Brylow
+ * TA-BOT:MAILTO nicolas.raimondi@marquette.edu payton.canegan@marquette.edu
+ */
+/* Copyright (C) 1997-2003, Purdue Research Foundation of Purdue University.
+ * All rights reserved.  */
+package Translate;
+
+import Temp.Label;
+import Temp.Temp;
+
+/** Represents a conditional that can be used as an expression or statement. */
+public class IfThenElseExp extends Exp {
+    private final Exp condition;
+    private final Exp trueExpression;
+    private final Exp falseExpression;
+
+    IfThenElseExp(Exp condition, Exp trueExpression, Exp falseExpression) {
+        this.condition = condition;
+        this.trueExpression = trueExpression;
+        this.falseExpression = falseExpression;
+    }
+
+    private static Tree.Stm seq(Tree.Stm left, Tree.Stm right) {
+        if (left == null) return right;
+        if (right == null) return left;
+        return new Tree.SEQ(left, right);
+    }
+
+    private static Integer constant(Exp expression) {
+        if (!(expression instanceof Ex)) return null;
+        Tree.Exp tree = ((Ex)expression).exp;
+        if (!(tree instanceof Tree.CONST)) return null;
+        return Integer.valueOf(((Tree.CONST)tree).value);
+    }
+
+    Tree.Stm unCx(Label trueLabel, Label falseLabel) {
+        Integer trueConstant = constant(trueExpression);
+        Integer falseConstant = constant(falseExpression);
+        if (falseConstant != null && falseConstant.intValue() == 0) {
+            Label evaluateRight = new Label();
+            return seq(condition.unCx(evaluateRight, falseLabel),
+                    seq(new Tree.LABEL(evaluateRight),
+                            trueExpression.unCx(trueLabel, falseLabel)));
+        }
+        if (trueConstant != null && trueConstant.intValue() != 0) {
+            Label evaluateRight = new Label();
+            return seq(condition.unCx(trueLabel, evaluateRight),
+                    seq(new Tree.LABEL(evaluateRight),
+                            falseExpression.unCx(trueLabel, falseLabel)));
+        }
+
+        Label thenLabel = new Label();
+        Label elseLabel = new Label();
+        return seq(condition.unCx(thenLabel, elseLabel),
+                seq(new Tree.LABEL(thenLabel),
+                seq(trueExpression.unCx(trueLabel, falseLabel),
+                seq(new Tree.LABEL(elseLabel),
+                        falseExpression.unCx(trueLabel, falseLabel)))));
+    }
+
+    Tree.Exp unEx() {
+        Tree.Exp trueValue = trueExpression.unEx();
+        Tree.Exp falseValue = falseExpression.unEx();
+        Temp result = new Temp();
+        Label thenLabel = new Label();
+        Label elseLabel = new Label();
+        Label joinLabel = new Label();
+
+        Tree.Stm thenBranch = new Tree.SEQ(
+                new Tree.LABEL(thenLabel),
+                new Tree.SEQ(new Tree.MOVE(new Tree.TEMP(result), trueValue),
+                        new Tree.JUMP(joinLabel)));
+        Tree.Stm elseBranch = new Tree.SEQ(
+                new Tree.LABEL(elseLabel),
+                new Tree.SEQ(new Tree.MOVE(new Tree.TEMP(result), falseValue),
+                        new Tree.JUMP(joinLabel)));
+        Tree.Stm statements = new Tree.SEQ(
+                new Tree.SEQ(condition.unCx(thenLabel, elseLabel),
+                        new Tree.SEQ(thenBranch, elseBranch)),
+                new Tree.LABEL(joinLabel));
+        return new Tree.ESEQ(statements, new Tree.TEMP(result));
+    }
+
+    Tree.Stm unNx() {
+        Tree.Stm thenBody = trueExpression.unNx();
+        Tree.Stm elseBody = falseExpression.unNx();
+        Label thenLabel = new Label();
+        Label elseLabel = new Label();
+        Label joinLabel = new Label();
+        Tree.Stm thenBranch = new Tree.SEQ(
+                new Tree.SEQ(new Tree.LABEL(thenLabel), thenBody),
+                new Tree.JUMP(joinLabel));
+        Tree.Stm elseBranch = new Tree.SEQ(
+                new Tree.SEQ(new Tree.LABEL(elseLabel), elseBody),
+                new Tree.JUMP(joinLabel));
+        return new Tree.SEQ(
+                new Tree.SEQ(condition.unCx(thenLabel, elseLabel),
+                        new Tree.SEQ(thenBranch, elseBranch)),
+                new Tree.LABEL(joinLabel));
+    }
+}
