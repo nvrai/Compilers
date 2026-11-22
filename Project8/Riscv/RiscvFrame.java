@@ -307,7 +307,7 @@ public class RiscvFrame extends Frame.Frame
 
     public void printFrame(java.io.PrintWriter writer)
     {
-	writer.println("RiscvFrame(");
+	writer.println("Riscv.RiscvFrame(");
 	writer.println(this.name + ":");
 	writer.print("Formals(");
     
@@ -354,6 +354,27 @@ public class RiscvFrame extends Frame.Frame
 
     public void procEntryExit1(List<Tree.Stm> body)
     {
+        LinkedList<Temp> saved = new LinkedList<Temp>();
+        ListIterator<Tree.Stm> entry = body.listIterator();
+        for (Temp register : calleeSaves)
+        {
+            Temp temporary = new Temp();
+            saved.add(temporary);
+            entry.add(MOVE(TEMP(temporary), TEMP(register)));
+        }
+
+        Iterator<Frame.Access> formal = formals.iterator();
+        Iterator<Frame.Access> actual = actuals.iterator();
+        while (formal.hasNext() && actual.hasNext())
+        {
+            entry.add(MOVE(formal.next().exp(this), actual.next().exp(this)));
+        }
+
+        ListIterator<Temp> restore = saved.listIterator(saved.size());
+        for (int index = calleeSaves.length - 1; index >= 0; index--)
+        {
+            body.add(MOVE(TEMP(calleeSaves[index]), TEMP(restore.previous())));
+        }
     }
 
     public void procEntryExit2(List<Assem.Instr> body)

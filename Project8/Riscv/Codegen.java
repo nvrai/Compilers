@@ -50,17 +50,17 @@ public final class Codegen implements Tree.CodeVisitor {
     }
 
     public void visit(Tree.LABEL node) {
-        emit(new Assem.LABEL(node.label + ":", node.label));
+        emit(new Assem.LABEL(node.label.toString(), node.label));
     }
 
     public void visit(Tree.JUMP node) {
         if (node.exp instanceof Tree.NAME) {
-            emit(new Assem.OPER("\tj `j0", temps(), temps(),
+            emit(new Assem.OPER("\tj\t`j0", temps(), temps(),
                     new ArrayList<Label>(node.targets)));
             return;
         }
         Temp target = node.exp.accept(this);
-        emit(new Assem.OPER("\tjalr `s0", temps(), temps(target),
+        emit(new Assem.OPER("\tjalr\t`s0", temps(), temps(target),
                 new ArrayList<Label>(node.targets)));
     }
 
@@ -81,7 +81,7 @@ public final class Codegen implements Tree.CodeVisitor {
         case Tree.CJUMP.UGE: mnemonic = "bgeu"; break;
         default: throw new IllegalArgumentException("unknown relation " + node.relop);
         }
-        emit(new Assem.OPER("\t" + mnemonic + " `s0, `s1, `j0",
+        emit(new Assem.OPER("\t" + mnemonic + "\t`s0,\t`s1,\t`j0",
                 temps(), temps(left, right), labels(node.iftrue, node.iffalse)));
     }
 
@@ -110,24 +110,29 @@ public final class Codegen implements Tree.CodeVisitor {
             Tree.CONST right = rightConstant(addition);
             if (right != null && immediate(right.value)) {
                 offset[0] = right.value;
+                offset[1] = 1;
                 return addition.left.accept(this);
             }
             Tree.CONST left = leftConstant(addition);
             if (left != null && immediate(left.value)) {
                 offset[0] = left.value;
+                offset[1] = 1;
                 return addition.right.accept(this);
             }
         }
         offset[0] = 0;
+        offset[1] = 0;
         return address.accept(this);
     }
 
     public void visit(Tree.MOVE node) {
         if (node.dst instanceof Tree.MEM) {
             Temp source = node.src.accept(this);
-            int[] offset = new int[1];
+            int[] offset = new int[2];
             Temp base = loadAddress(((Tree.MEM)node.dst).exp, offset);
-            emit(new Assem.OPER("\tsw `s0, " + offset[0] + "(`s1)",
+            String address = offset[1] == 0 ? "(`s1)"
+                    : offset[0] + "(`s1)";
+            emit(new Assem.OPER("\tsw\t`s0,\t" + address,
                     temps(), temps(source, base)));
             return;
         }
@@ -136,7 +141,7 @@ public final class Codegen implements Tree.CodeVisitor {
         }
         Temp destination = ((Tree.TEMP)node.dst).temp;
         Temp source = node.src.accept(this);
-        emit(new Assem.MOVE("\tmv `d0, `s0", destination, source));
+        emit(new Assem.MOVE("\tmv\t`d0,\t`s0", destination, source));
     }
 
     public void visit(Tree.EXP node) {
@@ -153,7 +158,7 @@ public final class Codegen implements Tree.CodeVisitor {
             Tree.Exp operand = right != null ? node.left : node.right;
             if (factor != null && powerOfTwo(factor.value)) {
                 Temp source = operand.accept(this);
-                emit(new Assem.OPER("\tsll `d0, `s0, "
+                emit(new Assem.OPER("\tsll\t`d0,\t`s0,\t"
                         + Integer.numberOfTrailingZeros(factor.value),
                         temps(result), temps(source)));
                 return result;
@@ -162,7 +167,7 @@ public final class Codegen implements Tree.CodeVisitor {
         if (node.binop == Tree.BINOP.DIV && right != null
                 && powerOfTwo(right.value)) {
             Temp source = node.left.accept(this);
-            emit(new Assem.OPER("\tsra `d0, `s0, "
+            emit(new Assem.OPER("\tsra\t`d0,\t`s0,\t"
                     + Integer.numberOfTrailingZeros(right.value),
                     temps(result), temps(source)));
             return result;
@@ -202,7 +207,7 @@ public final class Codegen implements Tree.CodeVisitor {
             }
             if (mnemonic != null) {
                 Temp source = operand.accept(this);
-                emit(new Assem.OPER("\t" + mnemonic + " `d0, `s0, " + value,
+                emit(new Assem.OPER("\t" + mnemonic + "\t`d0,\t`s0,\t" + value,
                         temps(result), temps(source)));
                 return result;
             }
@@ -226,16 +231,18 @@ public final class Codegen implements Tree.CodeVisitor {
         case Tree.BINOP.BITXOR: mnemonic = "xor"; break;
         default: throw new IllegalArgumentException("unknown binary operation " + node.binop);
         }
-        emit(new Assem.OPER("\t" + mnemonic + " `d0, `s0, `s1",
+        emit(new Assem.OPER("\t" + mnemonic + "\t`d0,\t`s0,\t`s1",
                 temps(result), temps(first, second)));
         return result;
     }
 
     public Temp visit(Tree.MEM node) {
         Temp result = new Temp();
-        int[] offset = new int[1];
+        int[] offset = new int[2];
         Temp base = loadAddress(node.exp, offset);
-        emit(new Assem.OPER("\tlw `d0, " + offset[0] + "(`s0)",
+        String address = offset[1] == 0 ? "(`s0) // this guy"
+                : offset[0] + "(`s0)";
+        emit(new Assem.OPER("\tlw\t`d0,\t" + address,
                 temps(result), temps(base)));
         return result;
     }
@@ -250,7 +257,7 @@ public final class Codegen implements Tree.CodeVisitor {
 
     public Temp visit(Tree.NAME node) {
         Temp result = new Temp();
-        emit(new Assem.OPER("\tla `d0, " + node.label,
+        emit(new Assem.OPER("\tla\t`d0,\t" + node.label,
                 temps(result), temps()));
         return result;
     }
@@ -258,29 +265,25 @@ public final class Codegen implements Tree.CodeVisitor {
     public Temp visit(Tree.CONST node) {
         if (node.value == 0) return RiscvFrame.ZERO;
         Temp result = new Temp();
-        emit(new Assem.OPER("\tli `d0, " + node.value,
+        emit(new Assem.OPER("\tli\t`d0,\t" + node.value,
                 temps(result), temps()));
         return result;
     }
 
     public Temp visit(Tree.CALL node) {
-        Temp function = null;
         Label direct = null;
         if (node.func instanceof Tree.NAME) direct = ((Tree.NAME)node.func).label;
-        else function = node.func.accept(this);
 
-        ArrayList<Temp> arguments = new ArrayList<Temp>();
-        for (Tree.Exp argument : node.args) arguments.add(argument.accept(this));
         ArrayList<Temp> callUses = new ArrayList<Temp>();
-        for (int index = 0; index < arguments.size(); index++) {
-            Temp argument = arguments.get(index);
+        for (int index = 0; index < node.args.size(); index++) {
+            Temp argument = node.args.get(index).accept(this);
             if (index < RiscvFrame.argRegs.length) {
                 Temp register = RiscvFrame.argRegs[index];
-                emit(new Assem.MOVE("\tmv `d0, `s0", register, argument));
+                emit(new Assem.MOVE("\tmv\t`d0,\t`s0", register, argument));
                 callUses.add(register);
             } else {
                 int offset = (index - RiscvFrame.argRegs.length) * frame.wordSize();
-                emit(new Assem.OPER("\tsw `s0, " + offset + "(`s1)",
+                emit(new Assem.OPER("\tsw\t`s0,\t" + offset + "(`s1)",
                         temps(), temps(argument, RiscvFrame.SP)));
                 frame.maxArgOffset = Math.max(frame.maxArgOffset,
                         offset + frame.wordSize());
@@ -289,13 +292,20 @@ public final class Codegen implements Tree.CodeVisitor {
         }
 
         if (direct != null) {
-            emit(new Assem.OPER("\tcall " + direct,
+            emit(new Assem.OPER("\tcall\t" + direct,
                     Arrays.asList(RiscvFrame.calldefs), callUses));
         } else {
+            Temp function = node.func.accept(this);
             callUses.add(function);
-            emit(new Assem.OPER("\tjalr `s" + (callUses.size() - 1),
-                    Arrays.asList(RiscvFrame.calldefs), callUses));
+            int functionIndex = callUses.size() - 1;
+            ArrayList<Temp> orderedUses = new ArrayList<Temp>();
+            orderedUses.add(function);
+            orderedUses.addAll(callUses.subList(0, functionIndex));
+            emit(new Assem.OPER("\tjalr\t`s0",
+                    Arrays.asList(RiscvFrame.calldefs), orderedUses));
         }
+        emit(new Assem.OPER("\t// Call sink", temps(),
+                Arrays.asList(RiscvFrame.calldefs)));
         return frame.RV();
     }
 }

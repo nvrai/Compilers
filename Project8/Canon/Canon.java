@@ -84,6 +84,13 @@ public final class Canon {
             return new Tree.ESEQ(sequence(statement, result.stm), result.exp);
         }
         StmExps reordered = reorder(expression.kids());
+        if (expression instanceof Tree.CALL) {
+            Temp temporary = new Temp();
+            Tree.Exp call = expression.build(reordered.exps);
+            return new Tree.ESEQ(sequence(reordered.stm,
+                    new Tree.MOVE(new Tree.TEMP(temporary), call)),
+                    new Tree.TEMP(temporary));
+        }
         return new Tree.ESEQ(reordered.stm, expression.build(reordered.exps));
     }
 

@@ -320,7 +320,6 @@ public class Translate implements Absyn.TreeVisitor {
         if (method.returnVal != null) {
             statements.add(MOVE(TEMP(frame.RV()), method.returnVal.accept(this).unEx()));
         }
-        frame.procEntryExit1(statements);
         Tree.Stm body = seq(statements);
         fragments.add(new ProcFrag(body, frame));
         frame = previousFrame;

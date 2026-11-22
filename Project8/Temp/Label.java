@@ -1,3 +1,10 @@
+/**
+ * COSC 4400 - Project #8
+ * Represents symbolic code and data addresses used throughout the compiler.
+ * @authors Nick Raimondi and Payton Canegan
+ * Instructor Dr Brylow
+ * TA-BOT:MAILTO nicolas.raimondi@marquette.edu payton.canegan@marquette.edu
+ */
 /* Copyright (C) 1997-2003, Purdue Research Foundation of Purdue University.
  * All rights reserved.  */
 package Temp;
@@ -17,6 +24,12 @@ public class Label
 	 * language output.
 	 */
 	public String toString() {return name;}
+
+	/** Renames an automatically generated label while preserving its identity. */
+	public void rename(String n) { name = n; }
+
+	/** Sets the number used by the next automatically generated label. */
+	public static void setCount(int next) { count = next; }
 	
 	/**
 	 * Makes a new label that prints as "name".

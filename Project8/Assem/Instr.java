@@ -25,6 +25,25 @@ public abstract class Instr {
     public abstract List<Temp> def();
     public abstract Targets jumps();
 
+    private static <T> void appendValues(StringBuilder result, String name,
+            List<T> values) {
+        if (values == null || values.isEmpty()) return;
+        result.append(' ').append(name).append('(');
+        for (T value : values) result.append(value).append(' ');
+        result.append(')');
+    }
+
+    /** Prints the instruction and its data-flow metadata for the next phase. */
+    public String toString() {
+        StringBuilder result = new StringBuilder(getClass().getSimpleName());
+        result.append("(\"").append(assem).append('"');
+        appendValues(result, "defs", def());
+        appendValues(result, "uses", use());
+        Targets targets = jumps();
+        if (targets != null) appendValues(result, "jumps", targets.labels);
+        return result.append(')').toString();
+    }
+
     private static int operand(String template, int[] position) {
         int value = 0;
         int index = position[0];
