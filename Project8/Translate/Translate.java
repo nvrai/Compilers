@@ -501,9 +501,9 @@ public class Translate implements Absyn.TreeVisitor {
 
     public Exp visit(Absyn.CallExpr expression) {
         Temp receiver = new Temp();
-        Label valid = new Label();
         Tree.Exp target = expression.target.accept(this).unEx();
         List<Tree.Exp> translatedArguments = translateArguments(expression.args);
+        Label valid = new Label();
         Tree.Stm check = new Tree.SEQ(
                 MOVE(TEMP(receiver), target),
                 new Tree.SEQ(
@@ -607,8 +607,8 @@ public class Translate implements Absyn.TreeVisitor {
 
     public Exp visit(Absyn.ArrayExpr expression) {
         Temp array = new Temp();
-        Temp index = new Temp();
         Tree.Exp target = expression.target.accept(this).unEx();
+        Temp index = new Temp();
         Tree.Exp subscript = expression.index.accept(this).unEx();
         return new Ex(arrayElement(array, index, target, subscript));
     }

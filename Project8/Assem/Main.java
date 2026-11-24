@@ -154,6 +154,23 @@ public final class Main {
         return MiniJavaParser.Goal();
     }
 
+    private static boolean errorLabel(Temp.Label label) {
+        String name = label.toString();
+        return "_BADPTR".equals(name) || "_BADSUB".equals(name);
+    }
+
+    private static boolean conditionalPredecessor(
+            Canon.BasicBlocks blocks, Temp.Label target) {
+        for (List<Tree.Stm> block : blocks.blocks) {
+            Tree.Stm transfer = block.get(block.size() - 1);
+            if (!(transfer instanceof Tree.CJUMP)) continue;
+            Tree.CJUMP branch = (Tree.CJUMP)transfer;
+            if (branch.iftrue == target && !errorLabel(branch.iffalse)) return true;
+            if (branch.iffalse == target && !errorLabel(branch.iftrue)) return true;
+        }
+        return false;
+    }
+
     private static void emitProcedure(PrintWriter writer, ProcFrag procedure) {
         List<Tree.Stm> linear = Canon.Canon.linearize(procedure.body);
         Canon.BasicBlocks blocks = new Canon.BasicBlocks(linear);
@@ -174,12 +191,21 @@ public final class Main {
             }
             index++;
         }
-        if (blocks.blocks.size() == 1 && traced.size() >= 2
+        if (traced.size() >= 2
                 && traced.get(traced.size() - 2) instanceof Tree.JUMP) {
             Tree.JUMP jump = (Tree.JUMP)traced.get(traced.size() - 2);
+            Temp.Label fallthrough = null;
+            for (int index = traced.size() - 3; index >= 0; index--) {
+                if (traced.get(index) instanceof Tree.LABEL) {
+                    fallthrough = ((Tree.LABEL)traced.get(index)).label;
+                    break;
+                }
+            }
             if (jump.targets.size() == 1
                     && jump.targets.getFirst().toString().equals(
-                            blocks.done.toString())) {
+                            blocks.done.toString())
+                    && (blocks.blocks.size() == 1
+                            || conditionalPredecessor(blocks, fallthrough))) {
                 traced.remove(traced.size() - 2);
             }
         }
