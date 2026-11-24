@@ -143,8 +143,7 @@ public class Translate implements Absyn.TreeVisitor {
         return externalCall(name, values);
     }
 
-    private Tree.Exp checkedMemory(Tree.Exp expression, int offset) {
-        Temp pointer = new Temp();
+    private Tree.Exp checkedMemory(Temp pointer, Tree.Exp expression, int offset) {
         Label valid = new Label();
         Tree.Stm check = seq(
                 MOVE(TEMP(pointer), expression),
@@ -154,9 +153,12 @@ public class Translate implements Absyn.TreeVisitor {
         return new Tree.ESEQ(check, new Tree.ESEQ(new Tree.LABEL(valid), value));
     }
 
-    private Tree.Exp arrayElement(Tree.Exp arrayExpression, Tree.Exp indexExpression) {
-        Temp array = new Temp();
-        Temp index = new Temp();
+    private Tree.Exp checkedMemory(Tree.Exp expression, int offset) {
+        return checkedMemory(new Temp(), expression, offset);
+    }
+
+    private Tree.Exp arrayElement(Temp array, Temp index,
+            Tree.Exp arrayExpression, Tree.Exp indexExpression) {
         Label pointerOkay = new Label();
         Label lowerOkay = new Label();
         Label indexOkay = new Label();
@@ -498,10 +500,10 @@ public class Translate implements Absyn.TreeVisitor {
     }
 
     public Exp visit(Absyn.CallExpr expression) {
-        Tree.Exp target = expression.target.accept(this).unEx();
-        List<Tree.Exp> translatedArguments = translateArguments(expression.args);
         Temp receiver = new Temp();
         Label valid = new Label();
+        Tree.Exp target = expression.target.accept(this).unEx();
+        List<Tree.Exp> translatedArguments = translateArguments(expression.args);
         Tree.Stm check = new Tree.SEQ(
                 MOVE(TEMP(receiver), target),
                 new Tree.SEQ(
@@ -573,12 +575,15 @@ public class Translate implements Absyn.TreeVisitor {
     }
 
     public Exp visit(Absyn.FieldExpr expression) {
+        Temp pointer = new Temp();
         int index = expression.index == null ? 0 : expression.index.intValue();
         if (index < 0 && "length".equals(expression.field)) {
-            return new Ex(checkedMemory(expression.target.accept(this).unEx(),
+            return new Ex(checkedMemory(pointer,
+                    expression.target.accept(this).unEx(),
                     -frame.wordSize()));
         }
-        return new Ex(checkedMemory(expression.target.accept(this).unEx(),
+        return new Ex(checkedMemory(pointer,
+                expression.target.accept(this).unEx(),
                 index * frame.wordSize()));
     }
 
@@ -601,7 +606,10 @@ public class Translate implements Absyn.TreeVisitor {
     }
 
     public Exp visit(Absyn.ArrayExpr expression) {
-        return new Ex(arrayElement(expression.target.accept(this).unEx(),
-                expression.index.accept(this).unEx()));
+        Temp array = new Temp();
+        Temp index = new Temp();
+        Tree.Exp target = expression.target.accept(this).unEx();
+        Tree.Exp subscript = expression.index.accept(this).unEx();
+        return new Ex(arrayElement(array, index, target, subscript));
     }
 }

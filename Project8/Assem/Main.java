@@ -158,6 +158,22 @@ public final class Main {
         List<Tree.Stm> linear = Canon.Canon.linearize(procedure.body);
         Canon.BasicBlocks blocks = new Canon.BasicBlocks(linear);
         List<Tree.Stm> traced = new Canon.TraceSchedule(blocks).stms;
+        for (int index = 0; index + 1 < traced.size();) {
+            Tree.Stm statement = traced.get(index);
+            Tree.Stm next = traced.get(index + 1);
+            if (statement instanceof Tree.JUMP && next instanceof Tree.LABEL) {
+                Tree.JUMP jump = (Tree.JUMP)statement;
+                Temp.Label target = ((Tree.LABEL)next).label;
+                if (jump.targets.size() == 1
+                        && jump.targets.getFirst().toString().equals(
+                                target.toString())
+                        && !target.toString().equals(blocks.done.toString())) {
+                    traced.remove(index);
+                    continue;
+                }
+            }
+            index++;
+        }
         if (blocks.blocks.size() == 1 && traced.size() >= 2
                 && traced.get(traced.size() - 2) instanceof Tree.JUMP) {
             Tree.JUMP jump = (Tree.JUMP)traced.get(traced.size() - 2);

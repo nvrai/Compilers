@@ -153,6 +153,16 @@ public final class Codegen implements Tree.CodeVisitor {
         Tree.CONST right = rightConstant(node);
         Tree.CONST left = leftConstant(node);
 
+        if (right != null && right.value == 0
+                && (node.binop == Tree.BINOP.PLUS
+                        || node.binop == Tree.BINOP.MINUS)) {
+            return node.left.accept(this);
+        }
+        if (left != null && left.value == 0
+                && node.binop == Tree.BINOP.PLUS) {
+            return node.right.accept(this);
+        }
+
         if (node.binop == Tree.BINOP.MUL) {
             Tree.CONST factor = right != null ? right : left;
             Tree.Exp operand = right != null ? node.left : node.right;
